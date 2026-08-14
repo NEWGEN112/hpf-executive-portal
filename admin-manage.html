@@ -215,7 +215,9 @@
           await loadAll();
         };
       });
-      function renderHostels() {
+    }
+
+    function renderHostels() {
       const el = document.getElementById("panel-hostels");
       const tribeOptions = tribes.map(t => `<option value="\( {t.id}"> \){esc(t.name)}</option>`).join("");
       el.innerHTML = `
