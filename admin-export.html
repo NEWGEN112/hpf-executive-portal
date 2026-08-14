@@ -54,7 +54,7 @@
       <div class="logo">✦</div>
       <p class="pill">HPF ADMIN</p>
       <h1>Export Reports</h1>
-      <p class="sub">Download reports as PDF or Excel (CSV)</p>
+      <p class="sub">Download by month, tribe, or hostel</p>
       <div class="card">
         <label>Email</label>
         <input id="email" type="email" />
@@ -69,14 +69,16 @@
       <div class="logo">✦</div>
       <p class="pill">HPF ADMIN</p>
       <div class="top">
-        <h1>Export Reports</h1>
+        <h1>Month-end Export</h1>
         <button class="ghost" id="logoutBtn" type="button">Sign out</button>
       </div>
       <div class="card">
-        <label>Filter by week (optional)</label>
-        <input id="weekFilter" type="number" min="1" max="53" placeholder="Leave empty = all weeks" />
-        <label>Filter by tribe (optional)</label>
+        <label>Month</label>
+        <input id="monthFilter" type="month" />
+        <label>Tribe (optional)</label>
         <select id="tribeFilter"><option value="">All tribes</option></select>
+        <label>Hostel (optional)</label>
+        <select id="hostelFilter"><option value="">All hostels</option></select>
         <div class="row-btns">
           <button class="primary" id="pdfBtn" type="button" style="margin-top:0">Download PDF</button>
           <button class="primary" id="csvBtn" type="button" style="margin-top:0">Download Excel/CSV</button>
@@ -86,7 +88,7 @@
         <p class="meta" id="countBox" style="margin-top:12px">Loading...</p>
       </div>
       <div class="card">
-        <div class="meta" style="margin-bottom:8px">Preview (latest 10)</div>
+        <div class="meta" style="margin-bottom:8px">Preview (latest 15)</div>
         <div id="preview"></div>
       </div>
     </div>
@@ -137,24 +139,44 @@
       }
       return "";
     }
+    function ym(dateStr) {
+      if (!dateStr) return "";
+      var d = new Date(dateStr);
+      if (isNaN(d.getTime())) return String(dateStr).slice(0, 7);
+      var m = d.getMonth() + 1;
+      return d.getFullYear() + "-" + (m < 10 ? "0" + m : "" + m);
+    }
     function filtered() {
-      var week = document.getElementById("weekFilter").value;
+      var month = document.getElementById("monthFilter").value;
       var tribe = document.getElementById("tribeFilter").value;
+      var hostel = document.getElementById("hostelFilter").value;
       return reports.filter(function(r) {
-        if (week && String(r.week_number) !== String(week)) return false;
+        if (month && ym(r.created_at) !== month) return false;
         if (tribe && r.tribe_id !== tribe) return false;
+        if (hostel && r.hostel_id !== hostel) return false;
         return true;
       });
     }
+    function fillHostelOptions() {
+      var tribe = document.getElementById("tribeFilter").value;
+      var sel = document.getElementById("hostelFilter");
+      var opts = '<option value="">All hostels</option>';
+      for (var i = 0; i < hostels.length; i++) {
+        if (tribe && hostels[i].tribe_id !== tribe) continue;
+        opts += '<option value="' + hostels[i].id + '">' + esc(hostels[i].name) + "</option>";
+      }
+      sel.innerHTML = opts;
+    }
     function refreshPreview() {
       var rows = filtered();
-      document.getElementById("countBox").textContent = rows.length + " report(s) match filters";
+      var month = document.getElementById("monthFilter").value || "all months";
+      document.getElementById("countBox").textContent = rows.length + " report(s) for " + month;
       if (!rows.length) {
         document.getElementById("preview").innerHTML = '<div class="meta">No reports for this filter.</div>';
         return;
       }
       var html = "";
-      var n = Math.min(10, rows.length);
+      var n = Math.min(15, rows.length);
       for (var i = 0; i < n; i++) {
         var r = rows[i];
         html += '<div class="item"><b>' + esc(r.title || "Untitled") + '</b>';
@@ -179,24 +201,34 @@
         hostels = results[1].data || [];
         execs = results[2].data || [];
         reports = results[3].data || [];
-        var sel = document.getElementById("tribeFilter");
-        var opts = '<option value="">All tribes</option>';
+
+        var now = new Date();
+        var m = now.getMonth() + 1;
+        document.getElementById("monthFilter").value = now.getFullYear() + "-" + (m < 10 ? "0" + m : "" + m);
+
+        var tsel = document.getElementById("tribeFilter");
+        var topts = '<option value="">All tribes</option>';
         for (var i = 0; i < tribes.length; i++) {
-          opts += '<option value="' + tribes[i].id + '">' + esc(tribes[i].name) + "</option>";
+          topts += '<option value="' + tribes[i].id + '">' + esc(tribes[i].name) + "</option>";
         }
-        sel.innerHTML = opts;
+        tsel.innerHTML = topts;
+        fillHostelOptions();
         refreshPreview();
       });
     }
-    function downloadCSV() {
+    function fileLabel() {
+      var month = document.getElementById("monthFilter").value || "all";
+      return "hpf-reports-" + month;
+    }function downloadCSV() {
       var rows = filtered();
-      if (!rows.length) return show(msgError, "No reports to export.");
+      if (!rows.length) return show(msgError, "No reports to export for this month/filter.");
       show(msgError, "");
-      var lines = ['"Week","Title","Tribe","Hostel","Executive","Duration","Attendance","Comment","Created"'];
+      var lines = ['"Month","Week","Title","Tribe","Hostel","Executive","Duration","Attendance","Comment","Created"'];
       for (var i = 0; i < rows.length; i++) {
         var r = rows[i];
         var comment = String(r.comment || r.content || "").replace(/"/g, '""');
         lines.push(
+          '"' + ym(r.created_at) + '",' +
           '"' + (r.week_number == null ? "" : r.week_number) + '",' +
           '"' + String(r.title || "").replace(/"/g, '""') + '",' +
           '"' + String(tribeName(r.tribe_id)).replace(/"/g, '""') + '",' +
@@ -211,20 +243,21 @@
       var blob = new Blob([lines.join("\n")], { type: "text/csv;charset=utf-8;" });
       var a = document.createElement("a");
       a.href = URL.createObjectURL(blob);
-      a.download = "hpf-reports.csv";
+      a.download = fileLabel() + ".csv";
       a.click();
-      show(msgOk, "CSV downloaded. Open it in Excel.");
+      show(msgOk, "CSV downloaded for month-end. Open in Excel.");
     }
     function downloadPDF() {
       var rows = filtered();
-      if (!rows.length) return show(msgError, "No reports to export.");
+      if (!rows.length) return show(msgError, "No reports to export for this month/filter.");
       show(msgError, "");
       var jsPDF = window.jspdf.jsPDF;
       var doc = new jsPDF({ orientation: "landscape" });
+      var month = document.getElementById("monthFilter").value || "All months";
       doc.setFontSize(14);
-      doc.text("HPF Weekly Reports", 14, 14);
+      doc.text("HPF Monthly Reports - " + month, 14, 14);
       doc.setFontSize(10);
-      doc.text("Generated: " + new Date().toLocaleString(), 14, 20);
+      doc.text("Generated: " + new Date().toLocaleString() + " | Total: " + rows.length, 14, 20);
       var body = [];
       for (var i = 0; i < rows.length; i++) {
         var r = rows[i];
@@ -236,7 +269,7 @@
           execName(r.executive_id),
           r.duration || "",
           r.attendance == null ? "" : r.attendance,
-          String(r.comment || r.content || "").slice(0, 80)
+          String(r.comment || r.content || "").slice(0, 70)
         ]);
       }
       doc.autoTable({
@@ -246,12 +279,16 @@
         styles: { fontSize: 8, cellPadding: 2 },
         headStyles: { fillColor: [20, 48, 26] }
       });
-      doc.save("hpf-reports.pdf");
-      show(msgOk, "PDF downloaded.");
+      doc.save(fileLabel() + ".pdf");
+      show(msgOk, "PDF downloaded for month-end.");
     }
 
-    document.getElementById("weekFilter").oninput = refreshPreview;
-    document.getElementById("tribeFilter").onchange = refreshPreview;
+    document.getElementById("monthFilter").onchange = refreshPreview;
+    document.getElementById("tribeFilter").onchange = function() {
+      fillHostelOptions();
+      refreshPreview();
+    };
+    document.getElementById("hostelFilter").onchange = refreshPreview;
     document.getElementById("pdfBtn").onclick = downloadPDF;
     document.getElementById("csvBtn").onclick = downloadCSV;
 
