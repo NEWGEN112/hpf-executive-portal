@@ -1,1 +1,185 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>HPF Executive Portal</title>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <style>
+    :root {
+      --bg: #0b0f0c;
+      --card: #121a14;
+      --line: #1e2a22;
+      --text: #e8f0ea;
+      --muted: #8fa396;
+      --accent: #c8f54a;
+      --input: #0e1511;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0; min-height: 100vh;
+      font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+      background: radial-gradient(1200px 600px at 50% -10%, #16301c 0%, var(--bg) 55%);
+      color: var(--text);
+    }
+    .wrap { max-width: 420px; margin: 0 auto; padding: 32px 16px 48px; }
+    .logo {
+      width: 48px; height: 48px; border-radius: 12px;
+      background: var(--accent); color: #111;
+      display: grid; place-items: center;
+      font-weight: 800; font-size: 22px; margin: 0 auto 12px;
+    }
+    .pill {
+      text-align: center; color: var(--accent);
+      font-size: 12px; letter-spacing: 0.12em; font-weight: 700; margin: 0 0 6px;
+    }
+    h1 { text-align: center; margin: 0 0 8px; font-size: 28px; }
+    .sub { text-align: center; color: var(--muted); margin: 0 0 24px; font-size: 14px; }
+    .card {
+      background: var(--card); border: 1px solid var(--line);
+      border-radius: 16px; padding: 20px;
+    }
+    label { display: block; font-size: 13px; color: var(--muted); margin: 12px 0 6px; }
+    input, select, textarea {
+      width: 100%; background: var(--input); border: 1px solid var(--line);
+      border-radius: 10px; padding: 12px 14px; color: var(--text);
+      font-size: 15px; outline: none; font-family: inherit;
+    }
+    textarea { min-height: 110px; resize: vertical; }
+    button {
+      width: 100%; margin-top: 18px; border: 0; border-radius: 10px;
+      padding: 13px 16px; font-size: 15px; font-weight: 700; cursor: pointer;
+    }
+    .primary { background: var(--accent); color: #111; }
+    .primary:disabled { opacity: 0.6; cursor: not-allowed; }
+    .ghost { background: transparent; color: var(--muted); margin-top: 10px; font-weight: 600; }
+    .error, .ok {
+      display: none; margin-top: 12px; border-radius: 10px;
+      padding: 10px 12px; font-size: 14px;
+    }
+    .error { background: #3a1515; color: #ffb4b4; border: 1px solid #5c2424; }
+    .ok { background: #14301a; color: #b7f5c2; border: 1px solid #2a5a36; }
+    .error.show, .ok.show { display: block; }
+    .tabs { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 8px; }
+    .tab {
+      background: #0e1511; color: var(--muted);
+      border: 1px solid var(--line); margin-top: 0;
+    }
+    .tab.active { background: #1a2a1e; color: var(--accent); border-color: #2f4a36; }
+    .dash h2 { margin: 0 0 8px; font-size: 22px; }
+    .meta { color: var(--muted); font-size: 14px; margin-bottom: 16px; }
+    .row {
+      display: flex; justify-content: space-between; gap: 12px;
+      padding: 12px 0; border-bottom: 1px solid var(--line); font-size: 14px;
+    }
+    .row:last-child { border-bottom: 0; }
+    .hidden { display: none !important; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div id="authView">
+      <div class="logo">✦</div>
+      <p class="pill">HPF EXECUTIVE</p>
+      <h1>Executive Portal</h1>
+      <p class="sub">Register with your tribe code or sign in</p>
+      <div class="card">
+        <div class="tabs">
+          <button class="tab active" id="tabLogin" type="button">Sign in</button>
+          <button class="tab" id="tabRegister" type="button">Register</button>
+        </div>
+        <form id="loginForm">
+          <label>Email</label>
+          <input id="loginEmail" type="email" required placeholder="you@email.com" />
+          <label>Password</label>
+          <input id="loginPassword" type="password" required placeholder="Your password" />
+          <button class="primary" type="submit" id="loginBtn">Sign in</button>
+        </form>
+        <form id="registerForm" class="hidden">
+          <label>Tribe name (exact)</label>
+          <input id="regTribe" type="text" required placeholder="e.g. Lion Tribe" />
+          <label>Registration code (from HPF Admin)</label>
+          <input id="regCode" type="text" required placeholder="e.g. LION2026" />
+          <label>Full name</label>
+          <input id="regName" type="text" required placeholder="Your full name" />
+          <label>Email</label>
+          <input id="regEmail" type="email" required placeholder="you@email.com" />
+          <label>Password</label>
+          <input id="regPassword" type="password" required minlength="6" placeholder="Create a password" />
+          <button class="primary" type="submit" id="regBtn">Create executive account</button>
+        </form>
+        <div class="error" id="errorBox"></div>
+        <div class="ok" id="okBox"></div>
+      </div>
+    </div>
 
+    <div id="dashView" class="hidden">
+      <div class="logo">✦</div>
+      <p class="pill">HPF EXECUTIVE</p>
+      <div class="card dash">
+        <h2 id="welcome">Welcome</h2>
+        <p class="meta" id="execMeta">—</p>
+        <div class="row"><span>Tribe</span><strong id="tribeName">—</strong></div>
+        <div class="row"><span>Email</span><strong id="execEmail">—</strong></div>
+        <h2 style="margin-top:22px;font-size:18px;">Weekly report</h2>
+        <label>Hostel</label>
+        <select id="hostelSelect"></select>
+        <label>Week number</label>
+        <input id="weekNumber" type="number" min="1" max="53" placeholder="e.g. 12" />
+        <label>Report</label>
+        <textarea id="reportText" placeholder="Write this week's hostel report..."></textarea>
+        <button class="primary" type="button" id="submitReport">Submit report</button>
+        <button class="ghost" type="button" id="logoutBtn">Sign out</button>
+        <div class="error" id="dashError"></div>
+        <div class="ok" id="dashOk"></div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const SUPABASE_URL = "https://pexepaclinlqcwjuzhen.supabase.co";
+    const SUPABASE_KEY = "sb_publishable_U7WdBF49bn0x0cJ8t3s2WQ_5w4mnty5";
+    const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+    const authView = document.getElementById("authView");
+    const dashView = document.getElementById("dashView");
+    const errorBox = document.getElementById("errorBox");
+    const okBox = document.getElementById("okBox");
+    const dashError = document.getElementById("dashError");
+    const dashOk = document.getElementById("dashOk");
+    let currentExec = null;
+
+    function showError(el, msg) {
+      el.textContent = msg || "";
+      el.classList.toggle("show", !!msg);
+    }
+    function showOk(el, msg) {
+      el.textContent = msg || "";
+      el.classList.toggle("show", !!msg);
+    }
+
+    document.getElementById("tabLogin").onclick = () => {
+      document.getElementById("tabLogin").classList.add("active");
+      document.getElementById("tabRegister").classList.remove("active");
+      document.getElementById("loginForm").classList.remove("hidden");
+      document.getElementById("registerForm").classList.add("hidden");
+      showError(errorBox, ""); showOk(okBox, "");
+    };
+    document.getElementById("tabRegister").onclick = () => {
+      document.getElementById("tabRegister").classList.add("active");
+      document.getElementById("tabLogin").classList.remove("active");
+      document.getElementById("registerForm").classList.remove("hidden");
+      document.getElementById("loginForm").classList.add("hidden");
+      showError(errorBox, ""); showOk(okBox, "");
+    };
+
+    document.getElementById("registerForm").onsubmit = async (e) => {
+      e.preventDefault();
+      showError(errorBox, ""); showOk(okBox, "");
+      const tribeName = document.getElementById("regTribe").value.trim();
+      const code = document.getElementById("regCode").value.trim();
+      const fullName = document.getElementById("regName").value.trim();
+      const email = document.getElementById("regEmail").value.trim();
+      const password = document.getElementById("regPassword").value;
+      const btn = document.getElementById("regBtn");
+      btn.disabled = true;
