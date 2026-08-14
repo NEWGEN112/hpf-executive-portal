@@ -1,1 +1,286 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>HPF Admin Export</title>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
+  <style>
+    :root {
+      --bg:#0b0f0c; --card:#121a14; --line:#1e2a22; --text:#e8f0ea;
+      --muted:#8fa396; --accent:#c8f54a; --input:#0e1511;
+    }
+    *{box-sizing:border-box}
+    body{
+      margin:0;min-height:100vh;color:var(--text);
+      font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;
+      background:radial-gradient(1200px 600px at 50% -10%,#16301c 0%,var(--bg) 55%);
+    }
+    .wrap{max-width:900px;margin:0 auto;padding:20px 12px 40px}
+    .logo{
+      width:44px;height:44px;border-radius:12px;background:var(--accent);color:#111;
+      display:grid;place-items:center;font-weight:800;font-size:20px;margin:0 auto 8px
+    }
+    .pill{text-align:center;color:var(--accent);font-size:12px;letter-spacing:.12em;font-weight:700;margin:0 0 6px}
+    h1{text-align:center;margin:0 0 6px;font-size:24px}
+    .sub{text-align:center;color:var(--muted);margin:0 0 16px;font-size:14px}
+    .card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px;margin-bottom:12px}
+    label{display:block;font-size:13px;color:var(--muted);margin:10px 0 6px}
+    input,select{
+      width:100%;background:var(--input);border:1px solid var(--line);border-radius:10px;
+      padding:11px 12px;color:var(--text);font-size:15px;outline:none
+    }
+    button{border:0;border-radius:10px;padding:11px 14px;font-size:14px;font-weight:700;cursor:pointer}
+    .primary{background:var(--accent);color:#111;width:100%;margin-top:10px}
+    .ghost{background:transparent;color:var(--muted)}
+    .row-btns{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px}
+    .error,.ok{display:none;margin-top:10px;border-radius:10px;padding:10px;font-size:14px}
+    .error{background:#3a1515;color:#ffb4b4;border:1px solid #5c2424}
+    .ok{background:#14301a;color:#b7f5c2;border:1px solid #2a5a36}
+    .error.show,.ok.show{display:block}
+    .hidden{display:none!important}
+    .top{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:12px;flex-wrap:wrap}
+    .top h1{margin:0;font-size:22px;text-align:left}
+    .meta{color:var(--muted);font-size:13px}
+    .item{border:1px solid var(--line);border-radius:12px;padding:12px;margin-bottom:8px;background:#0e1511}
+    .item b{color:var(--accent)}
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div id="loginView">
+      <div class="logo">✦</div>
+      <p class="pill">HPF ADMIN</p>
+      <h1>Export Reports</h1>
+      <p class="sub">Download reports as PDF or Excel (CSV)</p>
+      <div class="card">
+        <label>Email</label>
+        <input id="email" type="email" />
+        <label>Password</label>
+        <input id="password" type="password" />
+        <button class="primary" id="loginBtn" type="button">Sign in</button>
+        <div class="error" id="loginError"></div>
+      </div>
+    </div>
 
+    <div id="appView" class="hidden">
+      <div class="logo">✦</div>
+      <p class="pill">HPF ADMIN</p>
+      <div class="top">
+        <h1>Export Reports</h1>
+        <button class="ghost" id="logoutBtn" type="button">Sign out</button>
+      </div>
+      <div class="card">
+        <label>Filter by week (optional)</label>
+        <input id="weekFilter" type="number" min="1" max="53" placeholder="Leave empty = all weeks" />
+        <label>Filter by tribe (optional)</label>
+        <select id="tribeFilter"><option value="">All tribes</option></select>
+        <div class="row-btns">
+          <button class="primary" id="pdfBtn" type="button" style="margin-top:0">Download PDF</button>
+          <button class="primary" id="csvBtn" type="button" style="margin-top:0">Download Excel/CSV</button>
+        </div>
+        <div class="error" id="msgError"></div>
+        <div class="ok" id="msgOk"></div>
+        <p class="meta" id="countBox" style="margin-top:12px">Loading...</p>
+      </div>
+      <div class="card">
+        <div class="meta" style="margin-bottom:8px">Preview (latest 10)</div>
+        <div id="preview"></div>
+      </div>
+    </div>
+</div>
+  <script>
+    const SUPABASE_URL = "https://pexepaclinlqcwjuzhen.supabase.co";
+    const SUPABASE_KEY = "sb_publishable_U7WdBF49bn0x0cJ8t3s2WQ_5w4mnty5";
+    const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+    const loginView = document.getElementById("loginView");
+    const appView = document.getElementById("appView");
+    const loginError = document.getElementById("loginError");
+    const msgError = document.getElementById("msgError");
+    const msgOk = document.getElementById("msgOk");
+
+    let tribes = [];
+    let reports = [];
+    let hostels = [];
+    let execs = [];
+
+    function show(el, msg) {
+      el.textContent = msg || "";
+      el.classList.toggle("show", !!msg);
+    }
+    function esc(s) {
+      return String(s ?? "")
+        .replaceAll("&", "&amp;").replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;").replaceAll('"', "&quot;");
+    }
+    async function requireAdmin(uid) {
+      const { data, error } = await sb.from("admin_accounts").select("id").eq("id", uid).maybeSingle();
+      if (error) throw error;
+      return !!data;
+    }
+
+    function tribeName(id) {
+      const t = tribes.find(x => x.id === id);
+      return t ? t.name : "";
+    }
+    function hostelName(id) {
+      const h = hostels.find(x => x.id === id);
+      return h ? h.name : "";
+    }
+    function execName(id) {
+      const e = execs.find(x => x.id === id);
+      return e ? (e.full_name || e.email || "") : "";
+    }
+
+    function filtered() {
+      const week = document.getElementById("weekFilter").value;
+      const tribe = document.getElementById("tribeFilter").value;
+      return reports.filter(r => {
+        if (week && String(r.week_number) !== String(week)) return false;
+        if (tribe && r.tribe_id !== tribe) return false;
+        return true;
+      });
+    }
+
+    function refreshPreview() {
+      const rows = filtered();
+      document.getElementById("countBox").textContent = rows.length + " report(s) match filters";
+      document.getElementById("preview").innerHTML = rows.slice(0, 10).map(r => `
+        <div class="item">
+          <b>${esc(r.title || "Untitled")}</b>
+          <div class="meta">Week ${r.week_number ?? "—"} · ${esc(tribeName(r.tribe_id))} · ${esc(hostelName(r.hostel_id))}</div>
+          <div class="meta">Attendance ${r.attendance ?? "—"} · ${esc(r.duration || "—")} · ${esc(execName(r.executive_id))}</div>
+        </div>
+      `).join("") || '<div class="meta">No reports for this filter.</div>';
+    }
+
+    async function loadData() {
+      show(msgError, ""); show(msgOk, "");
+      const [t, h, e, r] = await Promise.all([
+        sb.from("tribes").select("id, name").order("name"),
+        sb.from("hostels").select("id, name, tribe_id").order("name"),
+        sb.from("executive_accounts").select("id, full_name, email").order("full_name"),
+        sb.from("weekly_reports").select("*").order("created_at", { ascending: false })
+      ]);
+      if (t.error) throw t.error;
+      if (h.error) throw h.error;
+      if (e.error) throw e.error;
+      if (r.error) throw r.error;
+      tribes = t.data || [];
+      hostels = h.data || [];
+      execs = e.data || [];
+      reports = r.data || [];
+
+      const sel = document.getElementById("tribeFilter");
+      sel.innerHTML = '<option value="">All tribes</option>' +
+        tribes.map(x => `<option value="\( {x.id}"> \){esc(x.name)}</option>`).join("");
+      refreshPreview();
+      function downloadCSV() {
+      const rows = filtered();
+      if (!rows.length) return show(msgError, "No reports to export.");
+      show(msgError, "");
+      const header = ["Week","Title","Tribe","Hostel","Executive","Duration","Attendance","Comment","Created"];
+      const lines = [header.join(",")];
+      rows.forEach(r => {
+        const cols = [
+          r.week_number ?? "",
+          r.title || "",
+          tribeName(r.tribe_id),
+          hostelName(r.hostel_id),
+          execName(r.executive_id),
+          r.duration || "",
+          r.attendance ?? "",
+          (r.comment || r.content || "").replaceAll('"','""'),
+          r.created_at || ""
+        ].map(v => `"${String(v)}"`);
+        lines.push(cols.join(","));
+      });
+      const blob = new Blob([lines.join("\n")], { type: "text/csv;charset=utf-8;" });
+      const a = document.createElement("a");
+      a.href = URL.createObjectURL(blob);
+      a.download = "hpf-reports.csv";
+      a.click();
+      show(msgOk, "CSV downloaded. Open it in Excel.");
+    }
+
+    function downloadPDF() {
+      const rows = filtered();
+      if (!rows.length) return show(msgError, "No reports to export.");
+      show(msgError, "");
+      const { jsPDF } = window.jspdf;
+      const doc = new jsPDF({ orientation: "landscape" });
+      doc.setFontSize(14);
+      doc.text("HPF Weekly Reports", 14, 14);
+      doc.setFontSize(10);
+      doc.text("Generated: " + new Date().toLocaleString(), 14, 20);
+
+      const body = rows.map(r => [
+        r.week_number ?? "",
+        r.title || "",
+        tribeName(r.tribe_id),
+        hostelName(r.hostel_id),
+        execName(r.executive_id),
+        r.duration || "",
+        r.attendance ?? "",
+        (r.comment || r.content || "").slice(0, 80)
+      ]);
+
+      doc.autoTable({
+        startY: 24,
+        head: [["Week","Title","Tribe","Hostel","Executive","Duration","Attendance","Comment"]],
+        body,
+        styles: { fontSize: 8, cellPadding: 2 },
+        headStyles: { fillColor: [20, 48, 26] }
+      });
+
+      doc.save("hpf-reports.pdf");
+      show(msgOk, "PDF downloaded.");
+    }
+
+    document.getElementById("weekFilter").oninput = refreshPreview;
+    document.getElementById("tribeFilter").onchange = refreshPreview;
+    document.getElementById("pdfBtn").onclick = downloadPDF;
+    document.getElementById("csvBtn").onclick = downloadCSV;
+
+    document.getElementById("loginBtn").onclick = async () => {
+      show(loginError, "");
+      const email = document.getElementById("email").value.trim();
+      const password = document.getElementById("password").value;
+      try {
+        const { data, error } = await sb.auth.signInWithPassword({ email, password });
+        if (error) throw error;
+        const ok = await requireAdmin(data.user.id);
+        if (!ok) {
+          await sb.auth.signOut();
+          throw new Error("This account is not an HPF Admin.");
+        }
+        loginView.classList.add("hidden");
+        appView.classList.remove("hidden");
+        await loadData();
+      } catch (err) {
+        show(loginError, err.message || String(err));
+      }
+    };
+
+    document.getElementById("logoutBtn").onclick = async () => {
+      await sb.auth.signOut();
+      appView.classList.add("hidden");
+      loginView.classList.remove("hidden");
+    };
+
+    (async () => {
+      const { data } = await sb.auth.getSession();
+      if (!data.session) return;
+      const ok = await requireAdmin(data.session.user.id);
+      if (!ok) return;
+      loginView.classList.add("hidden");
+      appView.classList.remove("hidden");
+      try { await loadData(); } catch (e) { show(msgError, e.message || String(e)); }
+    })();
+  </script>
+</body>
+</html>
+    }
