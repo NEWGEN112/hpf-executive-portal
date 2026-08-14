@@ -1,1 +1,287 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>HPF President Hub</title>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <style>
+    :root {
+      --bg:#0b0f0c; --card:#121a14; --line:#1e2a22; --text:#e8f0ea;
+      --muted:#8fa396; --accent:#c8f54a; --input:#0e1511;
+    }
+    *{box-sizing:border-box}
+    body{
+      margin:0;min-height:100vh;color:var(--text);
+      font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;
+      background:radial-gradient(1200px 600px at 50% -10%,#16301c 0%,var(--bg) 55%);
+    }
+    .wrap{max-width:960px;margin:0 auto;padding:20px 12px 40px}
+    .logo{
+      width:48px;height:48px;border-radius:12px;background:var(--accent);color:#111;
+      display:grid;place-items:center;font-weight:800;font-size:22px;margin:0 auto 8px
+    }
+    .pill{text-align:center;color:var(--accent);font-size:12px;letter-spacing:.12em;font-weight:700;margin:0 0 6px}
+    h1{text-align:center;margin:0 0 6px;font-size:24px}
+    .sub{text-align:center;color:var(--muted);margin:0 0 16px;font-size:14px}
+    .card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px;margin-bottom:12px}
+    label{display:block;font-size:13px;color:var(--muted);margin:10px 0 6px}
+    input{
+      width:100%;background:var(--input);border:1px solid var(--line);border-radius:10px;
+      padding:11px 12px;color:var(--text);font-size:15px;outline:none
+    }
+    button{border:0;border-radius:10px;padding:11px 14px;font-size:14px;font-weight:700;cursor:pointer}
+    .primary{background:var(--accent);color:#111;width:100%;margin-top:12px}
+    .ghost{background:transparent;color:var(--muted)}
+    .error{display:none;margin-top:10px;border-radius:10px;padding:10px;font-size:14px;background:#3a1515;color:#ffb4b4;border:1px solid #5c2424}
+    .error.show{display:block}
+    .hidden{display:none!important}
+    .top{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:12px;flex-wrap:wrap}
+    .top h1{margin:0;font-size:22px;text-align:left}
+    .grid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-bottom:14px}
+    @media(min-width:700px){.grid{grid-template-columns:repeat(4,1fr)}}
+    .stat{background:#0e1511;border:1px solid var(--line);border-radius:14px;padding:14px}
+    .stat .n{font-size:28px;font-weight:800;color:var(--accent);line-height:1.1}
+    .stat .l{font-size:12px;color:var(--muted);margin-top:4px}
+    .tools{display:grid;grid-template-columns:1fr;gap:8px}
+    @media(min-width:600px){.tools{grid-template-columns:1fr 1fr}}
+    .tools a{
+      display:block;text-decoration:none;color:#111;background:var(--accent);
+      font-weight:700;padding:14px 16px;border-radius:12px;text-align:center
+    }
+    .tools a.secondary{
+      background:#1a2a1e;color:var(--accent);border:1px solid #2f4a36
+    }
+    .section-title{margin:4px 0 10px;font-size:16px;font-weight:700}
+    .row{border:1px solid var(--line);border-radius:12px;padding:12px;margin-bottom:8px;background:#0e1511}
+    .row b{color:var(--accent)}
+    .meta{color:var(--muted);font-size:12px;margin-top:4px}
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div id="loginView">
+      <div class="logo">✦</div>
+      <p class="pill">HPF PRESIDENT</p>
+      <h1>President Hub</h1>
+      <p class="sub">Full overview + access to every admin tool</p>
+      <div class="card">
+        <label>Email</label>
+        <input id="email" type="email" />
+        <label>Password</label>
+        <input id="password" type="password" />
+        <button class="primary" id="loginBtn" type="button">Sign in</button>
+        <div class="error" id="loginError"></div>
+      </div>
+    </div>
 
+    <div id="hubView" class="hidden">
+      <div class="logo">✦</div>
+      <p class="pill">HPF PRESIDENT</p>
+      <div class="top">
+        <h1>President Hub</h1>
+        <button class="ghost" id="logoutBtn" type="button">Sign out</button>
+      </div>
+      <p class="sub" id="welcomeLine" style="text-align:left;margin-bottom:12px">Welcome</p>
+
+      <div class="grid" id="stats"></div>
+
+      <div class="card">
+        <div class="section-title">All tools (Admin access)</div>
+        <div class="tools">
+          <a href="./admin-dashboard.html">Summary Dashboard</a>
+          <a href="./admin-manage.html">Manage Tribes / Hostels / Executives</a>
+          <a href="./admin-reports.html">Full Reports</a>
+          <a href="./admin-export.html">Month-end Export (PDF / Excel)</a>
+          <a href="./admin-schedule.html">All Hostel Schedules</a>
+          <a class="secondary" href="https://hpf-executive-tribes.vercel.app" target="_blank">Main Admin Portal</a>
+          <a class="secondary" href="./index.html">Executive Portal</a>
+          <a class="secondary" href="./executive-schedule.html">Executive Schedule Page</a>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="section-title">This week snapshot</div>
+        <div id="weekBox" class="meta">Loading...</div>
+      </div>
+
+      <div class="card">
+        <div class="section-title">Executives missing reports</div>
+        <div id="missingBox" class="meta">Loading...</div>
+      </div>
+
+      <div class="card">
+        <div class="section-title">Recent reports</div>
+        <div id="recentBox" class="meta">Loading...</div>
+      </div>
+
+      <div class="error" id="hubError"></div>
+    </div>
+  </div>
+  <script>
+    var SUPABASE_URL = "https://pexepaclinlqcwjuzhen.supabase.co";
+    var SUPABASE_KEY = "sb_publishable_U7WdBF49bn0x0cJ8t3s2WQ_5w4mnty5";
+    var sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+    var loginView = document.getElementById("loginView");
+    var hubView = document.getElementById("hubView");
+    var loginError = document.getElementById("loginError");
+    var hubError = document.getElementById("hubError");
+
+    function show(el, msg) {
+      el.textContent = msg || "";
+      if (msg) el.classList.add("show"); else el.classList.remove("show");
+    }
+    function esc(s) {
+      return String(s == null ? "" : s)
+        .replace(/&/g, "&amp;").replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+    }
+    function weekNumber(d) {
+      var date = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
+      var dayNum = date.getUTCDay() || 7;
+      date.setUTCDate(date.getUTCDate() + 4 - dayNum);
+      var yearStart = new Date(Date.UTC(date.getUTCFullYear(), 0, 1));
+      return Math.ceil((((date - yearStart) / 86400000) + 1) / 7);
+    }
+    function requirePresident(uid) {
+      return sb.from("president_accounts").select("id, full_name, email").eq("id", uid).maybeSingle()
+        .then(function(res) {
+          if (res.error) throw res.error;
+          return res.data;
+        });
+    }function loadHub(pres) {
+      show(hubError, "");
+      document.getElementById("welcomeLine").textContent =
+        "Signed in as " + (pres.full_name || pres.email || "President");
+
+      return Promise.all([
+        sb.from("tribes").select("id, name"),
+        sb.from("hostels").select("id, name, tribe_id"),
+        sb.from("executive_accounts").select("id, full_name, email, tribe_id"),
+        sb.from("weekly_reports").select("id, title, week_number, attendance, duration, comment, content, created_at, tribe_id, executive_id, hostel_id").order("created_at", { ascending: false }),
+        sb.from("hostel_schedules").select("id, week_number, tribe_id, hostel_id")
+      ]).then(function(results) {
+        for (var i = 0; i < results.length; i++) {
+          if (results[i].error) throw results[i].error;
+        }
+        var tribes = results[0].data || [];
+        var hostels = results[1].data || [];
+        var execs = results[2].data || [];
+        var reports = results[3].data || [];
+        var schedules = results[4].data || [];
+
+        var totalAttendance = 0;
+        for (var r = 0; r < reports.length; r++) totalAttendance += Number(reports[r].attendance) || 0;
+        var currentWeek = weekNumber(new Date());
+        var weekReports = reports.filter(function(x) { return Number(x.week_number) === currentWeek; });
+        var weekAtt = 0;
+        for (var w = 0; w < weekReports.length; w++) weekAtt += Number(weekReports[w].attendance) || 0;
+        var reported = {};
+        for (var p = 0; p < reports.length; p++) {
+          if (reports[p].executive_id) reported[reports[p].executive_id] = true;
+        }
+        var reportedCount = 0;
+        for (var k in reported) if (reported.hasOwnProperty(k)) reportedCount++;
+
+        document.getElementById("stats").innerHTML =
+          '<div class="stat"><div class="n">' + tribes.length + '</div><div class="l">Tribes</div></div>' +
+          '<div class="stat"><div class="n">' + hostels.length + '</div><div class="l">Hostels</div></div>' +
+          '<div class="stat"><div class="n">' + execs.length + '</div><div class="l">Executives</div></div>' +
+          '<div class="stat"><div class="n">' + reports.length + '</div><div class="l">All reports</div></div>' +
+          '<div class="stat"><div class="n">' + totalAttendance + '</div><div class="l">Total attendance</div></div>' +
+          '<div class="stat"><div class="n">' + weekReports.length + '</div><div class="l">Reports this week</div></div>' +
+          '<div class="stat"><div class="n">' + weekAtt + '</div><div class="l">Attendance this week</div></div>' +
+          '<div class="stat"><div class="n">' + schedules.length + '</div><div class="l">Schedule slots</div></div>';
+
+        if (!weekReports.length) {
+          document.getElementById("weekBox").innerHTML = '<div class="meta">No reports for week ' + currentWeek + ' yet.</div>';
+        } else {
+          var wh = "";
+          var maxw = Math.min(8, weekReports.length);
+          for (var i2 = 0; i2 < maxw; i2++) {
+            var x = weekReports[i2];
+            var tname = "—";
+            for (var ti = 0; ti < tribes.length; ti++) if (tribes[ti].id === x.tribe_id) tname = tribes[ti].name;
+            wh += '<div class="row"><b>' + esc(x.title || "Untitled") + '</b>' +
+              '<div class="meta">' + esc(tname) + " · Attendance " + (x.attendance == null ? "—" : x.attendance) + " · " + esc(x.duration || "—") + "</div></div>";
+          }
+          document.getElementById("weekBox").innerHTML = wh;
+        }
+
+        var missing = [];
+        for (var e = 0; e < execs.length; e++) {
+          if (!reported[execs[e].id]) missing.push(execs[e]);
+        }
+        if (!missing.length) {
+          document.getElementById("missingBox").innerHTML = '<div class="meta">All executives have at least one report (or no executives yet).</div>';
+        } else {
+          var mh = "";
+          for (var m = 0; m < missing.length; m++) {
+            var ex = missing[m];
+            var tn = "No tribe";
+            for (var t2 = 0; t2 < tribes.length; t2++) if (tribes[t2].id === ex.tribe_id) tn = tribes[t2].name;
+            mh += '<div class="row"><b>' + esc(ex.full_name || ex.email || "—") + '</b>' +
+              '<div class="meta">' + esc(ex.email || "") + " · " + esc(tn) + "</div></div>";
+          }
+          document.getElementById("missingBox").innerHTML = mh;
+        }
+
+        if (!reports.length) {
+          document.getElementById("recentBox").innerHTML = '<div class="meta">No reports yet.</div>';
+        } else {
+          var rh = "";
+          var maxr = Math.min(8, reports.length);
+          for (var ri = 0; ri < maxr; ri++) {
+            var rr = reports[ri];
+            var tn2 = "—";
+            for (var t3 = 0; t3 < tribes.length; t3++) if (tribes[t3].id === rr.tribe_id) tn2 = tribes[t3].name;
+            var when = rr.created_at ? new Date(rr.created_at).toLocaleString() : "—";
+            rh += '<div class="row"><b>' + esc(rr.title || "Untitled") + '</b>' +
+              '<div class="meta">Week ' + (rr.week_number == null ? "—" : rr.week_number) + " · " + esc(tn2) + " · " + esc(when) + "</div></div>";
+          }
+          document.getElementById("recentBox").innerHTML = rh;
+        }
+      });
+    }
+
+    document.getElementById("loginBtn").onclick = function() {
+      show(loginError, "");
+      var email = document.getElementById("email").value.trim();
+      var password = document.getElementById("password").value;
+      sb.auth.signInWithPassword({ email: email, password: password }).then(function(res) {
+        if (res.error) throw res.error;
+        return requirePresident(res.data.user.id).then(function(pres) {
+          if (!pres) {
+            return sb.auth.signOut().then(function() {
+              throw new Error("This account is not an HPF President.");
+            });
+          }
+          loginView.classList.add("hidden");
+          hubView.classList.remove("hidden");
+          return loadHub(pres);
+        });
+      }).catch(function(err) {
+        show(loginError, err.message || String(err));
+      });
+    };
+
+    document.getElementById("logoutBtn").onclick = function() {
+      sb.auth.signOut().then(function() {
+        hubView.classList.add("hidden");
+        loginView.classList.remove("hidden");
+      });
+    };
+
+    sb.auth.getSession().then(function(res) {
+      if (!res.data.session) return;
+      requirePresident(res.data.session.user.id).then(function(pres) {
+        if (!pres) return;
+        loginView.classList.add("hidden");
+        hubView.classList.remove("hidden");
+        loadHub(pres).catch(function(e) { show(hubError, e.message || String(e)); });
+      });
+    });
+  </script>
+</body>
+</html>
