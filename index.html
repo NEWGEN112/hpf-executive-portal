@@ -45,7 +45,7 @@
       border-radius: 10px; padding: 12px 14px; color: var(--text);
       font-size: 15px; outline: none; font-family: inherit;
     }
-    textarea { min-height: 110px; resize: vertical; }
+    textarea { min-height: 100px; resize: vertical; }
     button {
       width: 100%; margin-top: 18px; border: 0; border-radius: 10px;
       padding: 13px 16px; font-size: 15px; font-weight: 700; cursor: pointer;
@@ -121,21 +121,35 @@
         <p class="meta" id="execMeta">—</p>
         <div class="row"><span>Tribe</span><strong id="tribeName">—</strong></div>
         <div class="row"><span>Email</span><strong id="execEmail">—</strong></div>
+
         <h2 style="margin-top:22px;font-size:18px;">Weekly report</h2>
+
         <label>Hostel</label>
         <select id="hostelSelect"></select>
+
+        <label>Message title</label>
+        <input id="reportTitle" type="text" placeholder="e.g. Sunday fellowship" />
+
+        <label>Duration</label>
+        <input id="reportDuration" type="text" placeholder="e.g. 1 hour 30 mins" />
+
+        <label>Number of attendance</label>
+        <input id="reportAttendance" type="number" min="0" placeholder="e.g. 25" />
+
+        <label>Comment</label>
+        <textarea id="reportComment" placeholder="Write your comment / report details..."></textarea>
+
         <label>Week number</label>
         <input id="weekNumber" type="number" min="1" max="53" placeholder="e.g. 12" />
-        <label>Report</label>
-        <textarea id="reportText" placeholder="Write this week's hostel report..."></textarea>
+
         <button class="primary" type="button" id="submitReport">Submit report</button>
         <button class="ghost" type="button" id="logoutBtn">Sign out</button>
         <div class="error" id="dashError"></div>
         <div class="ok" id="dashOk"></div>
       </div>
     </div>
-  </div>
-  <script>
+          </div>
+          <script>
     const SUPABASE_URL = "https://pexepaclinlqcwjuzhen.supabase.co";
     const SUPABASE_KEY = "sb_publishable_U7WdBF49bn0x0cJ8t3s2WQ_5w4mnty5";
     const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
@@ -272,23 +286,39 @@
     document.getElementById("submitReport").onclick = async () => {
       showError(dashError, ""); showOk(dashOk, "");
       const hostelId = document.getElementById("hostelSelect").value;
+      const title = document.getElementById("reportTitle").value.trim();
+      const duration = document.getElementById("reportDuration").value.trim();
+      const attendance = Number(document.getElementById("reportAttendance").value);
+      const comment = document.getElementById("reportComment").value.trim();
       const week = Number(document.getElementById("weekNumber").value);
-      const content = document.getElementById("reportText").value.trim();
-      if (!hostelId) return showError(dashError, "No hostel selected.");
+
+      if (!hostelId) return showError(dashError, "Select a hostel.");
+      if (!title) return showError(dashError, "Enter message title.");
+      if (!duration) return showError(dashError, "Enter duration.");
+      if (!document.getElementById("reportAttendance").value) return showError(dashError, "Enter number of attendance.");
+      if (!comment) return showError(dashError, "Enter comment.");
       if (!week) return showError(dashError, "Enter week number.");
-      if (!content) return showError(dashError, "Write the report first.");
 
       const { error } = await sb.from("weekly_reports").insert({
         tribe_id: currentExec.tribe_id,
         hostel_id: hostelId,
         executive_id: currentExec.id,
         week_number: week,
-        content: content
+        title: title,
+        duration: duration,
+        attendance: attendance,
+        comment: comment,
+        content: comment
       });
+
       if (error) showError(dashError, error.message);
       else {
         showOk(dashOk, "Report submitted. Admin can see it now.");
-        document.getElementById("reportText").value = "";
+        document.getElementById("reportTitle").value = "";
+        document.getElementById("reportDuration").value = "";
+        document.getElementById("reportAttendance").value = "";
+        document.getElementById("reportComment").value = "";
+        document.getElementById("weekNumber").value = "";
       }
     };
 
