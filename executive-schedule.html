@@ -1,1 +1,298 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>HPF Executive Schedule</title>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <style>
+    :root {
+      --bg:#0b0f0c; --card:#121a14; --line:#1e2a22; --text:#e8f0ea;
+      --muted:#8fa396; --accent:#c8f54a; --input:#0e1511;
+    }
+    *{box-sizing:border-box}
+    body{
+      margin:0;min-height:100vh;color:var(--text);
+      font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;
+      background:radial-gradient(1200px 600px at 50% -10%,#16301c 0%,var(--bg) 55%);
+    }
+    .wrap{max-width:920px;margin:0 auto;padding:20px 12px 40px}
+    .logo{
+      width:44px;height:44px;border-radius:12px;background:var(--accent);color:#111;
+      display:grid;place-items:center;font-weight:800;font-size:20px;margin:0 auto 8px
+    }
+    .pill{text-align:center;color:var(--accent);font-size:12px;letter-spacing:.12em;font-weight:700;margin:0 0 6px}
+    h1{text-align:center;margin:0 0 6px;font-size:24px}
+    .sub{text-align:center;color:var(--muted);margin:0 0 16px;font-size:14px}
+    .card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px;margin-bottom:12px}
+    label{display:block;font-size:13px;color:var(--muted);margin:10px 0 6px}
+    input,select,textarea{
+      width:100%;background:var(--input);border:1px solid var(--line);border-radius:10px;
+      padding:11px 12px;color:var(--text);font-size:15px;outline:none;font-family:inherit
+    }
+    button{border:0;border-radius:10px;padding:11px 14px;font-size:14px;font-weight:700;cursor:pointer}
+    .primary{background:var(--accent);color:#111;width:100%;margin-top:10px}
+    .ghost{background:transparent;color:var(--muted)}
+    .danger{background:#3a1515;color:#ffb4b4;border:1px solid #5c2424}
+    .row-btns{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px}
+    .row-btns button{flex:1;min-width:90px}
+    .error,.ok{display:none;margin-top:10px;border-radius:10px;padding:10px;font-size:14px}
+    .error{background:#3a1515;color:#ffb4b4;border:1px solid #5c2424}
+    .ok{background:#14301a;color:#b7f5c2;border:1px solid #2a5a36}
+    .error.show,.ok.show{display:block}
+    .hidden{display:none!important}
+    .top{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:12px;flex-wrap:wrap}
+    .top h1{margin:0;font-size:22px;text-align:left}
+    .item{border:1px solid var(--line);border-radius:12px;padding:12px;margin-bottom:8px;background:#0e1511}
+    .item b{color:var(--accent)}
+    .meta{color:var(--muted);font-size:12px;margin-top:4px}
+    .grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+    @media(max-width:560px){.grid2{grid-template-columns:1fr}}
+    .banner{background:#1a2a1e;border:1px solid #2f4a36;border-radius:12px;padding:10px 12px;margin-bottom:12px;font-size:14px}
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div id="loginView">
+      <div class="logo">✦</div>
+      <p class="pill">HPF EXECUTIVE</p>
+      <h1>My Schedule</h1>
+      <p class="sub">Update hostel fellowship days and times for your tribe</p>
+      <div class="card">
+        <label>Email</label>
+        <input id="email" type="email" />
+        <label>Password</label>
+        <input id="password" type="password" />
+        <button class="primary" id="loginBtn" type="button">Sign in</button>
+        <div class="error" id="loginError"></div>
+      </div>
+      <p class="sub"><a href="./index.html" style="color:var(--accent)">Back to Executive Portal</a></p>
+    </div>
 
+    <div id="appView" class="hidden">
+      <div class="logo">✦</div>
+      <p class="pill">HPF EXECUTIVE</p>
+      <div class="top">
+        <h1>My Week Schedule</h1>
+        <button class="ghost" id="logoutBtn" type="button">Sign out</button>
+      </div>
+      <div class="banner" id="tribeBanner">Loading...</div>
+
+      <div class="card">
+        <div style="font-weight:700;margin-bottom:8px">Add / update fellowship slot</div>
+        <div class="grid2">
+          <div>
+            <label>Week number</label>
+            <input id="weekNumber" type="number" min="1" max="53" placeholder="e.g. 12" />
+          </div>
+          <div>
+            <label>Day</label>
+            <select id="dayOfWeek">
+              <option value="Monday">Monday</option>
+              <option value="Tuesday">Tuesday</option>
+              <option value="Wednesday">Wednesday</option>
+              <option value="Thursday">Thursday</option>
+              <option value="Friday">Friday</option>
+              <option value="Saturday">Saturday</option>
+              <option value="Sunday">Sunday</option>
+            </select>
+          </div>
+        </div>
+        <label>Time</label>
+        <input id="meetingTime" type="text" placeholder="e.g. 7:00 PM" />
+        <label>Hostel</label>
+        <select id="hostelSelect"></select>
+        <label>Notes (optional)</label>
+        <textarea id="notes" rows="2" placeholder="e.g. Hostel prayer"></textarea>
+        <button class="primary" id="addBtn" type="button">Save slot</button>
+        <div class="error" id="msgError"></div>
+        <div class="ok" id="msgOk"></div>
+      </div>
+
+      <div class="card">
+        <label>Filter by week (optional)</label>
+        <input id="filterWeek" type="number" min="1" max="53" placeholder="Leave empty = all weeks" />
+        <div id="list" style="margin-top:12px"></div>
+      </div>
+    </div>
+  </div>
+  <script>
+    var SUPABASE_URL = "https://pexepaclinlqcwjuzhen.supabase.co";
+    var SUPABASE_KEY = "sb_publishable_U7WdBF49bn0x0cJ8t3s2WQ_5w4mnty5";
+    var sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+    var loginView = document.getElementById("loginView");
+    var appView = document.getElementById("appView");
+    var loginError = document.getElementById("loginError");
+    var msgError = document.getElementById("msgError");
+    var msgOk = document.getElementById("msgOk");
+
+    var currentExec = null;
+    var hostels = [];
+    var schedules = [];
+
+    function show(el, msg) {
+      el.textContent = msg || "";
+      if (msg) el.classList.add("show"); else el.classList.remove("show");
+    }
+    function esc(s) {
+      return String(s == null ? "" : s)
+        .replace(/&/g, "&amp;").replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+    }
+    function hostelName(id) {
+      for (var i = 0; i < hostels.length; i++) if (hostels[i].id === id) return hostels[i].name;
+      return "—";
+    }
+    function dayOrder(d) {
+      var map = {Monday:1,Tuesday:2,Wednesday:3,Thursday:4,Friday:5,Saturday:6,Sunday:7};
+      return map[d] || 99;
+    }
+    function fillHostels() {
+      var sel = document.getElementById("hostelSelect");
+      var html = "";
+      for (var i = 0; i < hostels.length; i++) {
+        html += '<option value="' + hostels[i].id + '">' + esc(hostels[i].name) + "</option>";
+      }
+      sel.innerHTML = html || '<option value="">No hostels in your tribe</option>';
+    }function renderList() {
+      var week = document.getElementById("filterWeek").value;
+      var rows = schedules.slice();
+      if (week) {
+        rows = rows.filter(function(s) { return String(s.week_number) === String(week); });
+      }
+      rows.sort(function(a, b) {
+        if (a.week_number !== b.week_number) return (a.week_number || 0) - (b.week_number || 0);
+        var da = dayOrder(a.day_of_week), db = dayOrder(b.day_of_week);
+        if (da !== db) return da - db;
+        return String(hostelName(a.hostel_id)).localeCompare(String(hostelName(b.hostel_id)));
+      });
+      if (!rows.length) {
+        document.getElementById("list").innerHTML = '<div class="meta">No slots yet. Add as many day + time slots as you need above.</div>';
+        return;
+      }
+      var html = "";
+      for (var i = 0; i < rows.length; i++) {
+        var s = rows[i];
+        html += '<div class="item" data-id="' + s.id + '">';
+        html += "<b>Week " + (s.week_number == null ? "—" : s.week_number) + " · " + esc(s.day_of_week || "—") + " · " + esc(s.meeting_time || "—") + "</b>";
+        html += '<div class="meta">Hostel: ' + esc(hostelName(s.hostel_id)) + "</div>";
+        if (s.notes) html += '<div class="meta">' + esc(s.notes) + "</div>";
+        html += '<div class="row-btns"><button class="danger del-btn" type="button">Delete</button></div>';
+        html += "</div>";
+      }
+      document.getElementById("list").innerHTML = html;
+      var items = document.querySelectorAll("#list .item");
+      for (var j = 0; j < items.length; j++) {
+        (function(item) {
+          var id = item.getAttribute("data-id");
+          item.querySelector(".del-btn").onclick = function() {
+            if (!confirm("Delete this slot?")) return;
+            show(msgError, ""); show(msgOk, "");
+            sb.from("hostel_schedules").delete().eq("id", id).then(function(res) {
+              if (res.error) return show(msgError, res.error.message);
+              show(msgOk, "Deleted.");
+              return loadAll();
+            });
+          };
+        })(items[j]);
+      }
+    }
+    function loadAll() {
+      show(msgError, "");
+      if (!currentExec || !currentExec.tribe_id) {
+        show(msgError, "Your account has no tribe assigned. Ask Admin.");
+        return Promise.resolve();
+      }
+      return Promise.all([
+        sb.from("hostels").select("id, name, tribe_id").eq("tribe_id", currentExec.tribe_id).order("name"),
+        sb.from("hostel_schedules").select("*").eq("tribe_id", currentExec.tribe_id).order("week_number"),
+        sb.from("tribes").select("name").eq("id", currentExec.tribe_id).maybeSingle()
+      ]).then(function(results) {
+        if (results[0].error) throw results[0].error;
+        if (results[1].error) throw results[1].error;
+        hostels = results[0].data || [];
+        schedules = results[1].data || [];
+        var tname = (results[2].data && results[2].data.name) || "Your tribe";
+        document.getElementById("tribeBanner").textContent =
+          "Tribe: " + tname + " · " + (currentExec.full_name || currentExec.email || "Executive");
+        fillHostels();
+        renderList();
+      });
+    }
+    function openApp(exec) {
+      currentExec = exec;
+      loginView.classList.add("hidden");
+      appView.classList.remove("hidden");
+      return loadAll();
+    }
+
+    document.getElementById("filterWeek").oninput = renderList;
+
+    document.getElementById("addBtn").onclick = function() {
+      show(msgError, ""); show(msgOk, "");
+      if (!currentExec || !currentExec.tribe_id) return show(msgError, "No tribe on your account.");
+      var week = Number(document.getElementById("weekNumber").value);
+      var day = document.getElementById("dayOfWeek").value;
+      var time = document.getElementById("meetingTime").value.trim();
+      var hostel_id = document.getElementById("hostelSelect").value;
+      var notes = document.getElementById("notes").value.trim() || null;
+      if (!week) return show(msgError, "Enter week number.");
+      if (!day) return show(msgError, "Select a day.");
+      if (!time) return show(msgError, "Enter time.");
+      if (!hostel_id) return show(msgError, "Select a hostel.");
+      sb.from("hostel_schedules").insert({
+        week_number: week,
+        day_of_week: day,
+        meeting_time: time,
+        tribe_id: currentExec.tribe_id,
+        hostel_id: hostel_id,
+        notes: notes
+      }).then(function(res) {
+        if (res.error) return show(msgError, res.error.message);
+        show(msgOk, "Saved. Add as many slots as you want for any hostel.");
+        document.getElementById("notes").value = "";
+        return loadAll();
+      });
+    };
+
+    document.getElementById("loginBtn").onclick = function() {
+      show(loginError, "");
+      var email = document.getElementById("email").value.trim();
+      var password = document.getElementById("password").value;
+      sb.auth.signInWithPassword({ email: email, password: password }).then(function(res) {
+        if (res.error) throw res.error;
+        return sb.from("executive_accounts").select("*").eq("id", res.data.user.id).maybeSingle()
+          .then(function(ex) {
+            if (ex.error) throw ex.error;
+            if (!ex.data) {
+              return sb.auth.signOut().then(function() {
+                throw new Error("This account is not an HPF Executive.");
+              });
+            }
+            return openApp(ex.data);
+          });
+      }).catch(function(err) {
+        show(loginError, err.message || String(err));
+      });
+    };
+
+    document.getElementById("logoutBtn").onclick = function() {
+      sb.auth.signOut().then(function() {
+        currentExec = null;
+        appView.classList.add("hidden");
+        loginView.classList.remove("hidden");
+      });
+    };
+
+    sb.auth.getSession().then(function(res) {
+      if (!res.data.session) return;
+      sb.from("executive_accounts").select("*").eq("id", res.data.session.user.id).maybeSingle()
+        .then(function(ex) {
+          if (ex.error || !ex.data) return;
+          openApp(ex.data).catch(function(e) { show(msgError, e.message || String(e)); });
+        });
+    });
+  </script>
+</body>
+</html>
