@@ -135,7 +135,6 @@
       </div>
     </div>
   </div>
-
   <script>
     const SUPABASE_URL = "https://pexepaclinlqcwjuzhen.supabase.co";
     const SUPABASE_KEY = "sb_publishable_U7WdBF49bn0x0cJ8t3s2WQ_5w4mnty5";
@@ -182,4 +181,134 @@
       const email = document.getElementById("regEmail").value.trim();
       const password = document.getElementById("regPassword").value;
       const btn = document.getElementById("regBtn");
-      btn.disabled = true;
+      btn.disabled = true; btn.textContent = "Creating...";
+      try {
+        const { data: tribe, error: tribeErr } = await sb
+          .from("tribes")
+          .select("id, name, registration_code")
+          .ilike("name", tribeName)
+          .eq("registration_code", code)
+          .maybeSingle();
+        if (tribeErr) throw tribeErr;
+        if (!tribe) throw new Error("Tribe name or registration code is incorrect. Ask HPF Admin.");
+
+        const { data: sign, error: signErr } = await sb.auth.signUp({ email, password });
+        if (signErr) throw signErr;
+        if (!sign.user) throw new Error("Could not create account. Try another email.");
+
+        const { error: insErr } = await sb.from("executive_accounts").insert({
+          id: sign.user.id,
+          full_name: fullName,
+          email: email,
+          tribe_id: tribe.id
+        });
+        if (insErr) throw insErr;
+
+        showOk(okBox, "Account created! You can now Sign in.");
+        document.getElementById("tabLogin").click();
+        document.getElementById("loginEmail").value = email;
+      } catch (err) {
+        showError(errorBox, err.message || String(err));
+      } finally {
+        btn.disabled = false; btn.textContent = "Create executive account";
+      }
+    };
+
+    document.getElementById("loginForm").onsubmit = async (e) => {
+      e.preventDefault();
+      showError(errorBox, ""); showOk(okBox, "");
+      const email = document.getElementById("loginEmail").value.trim();
+      const password = document.getElementById("loginPassword").value;
+      const btn = document.getElementById("loginBtn");
+      btn.disabled = true; btn.textContent = "Signing in...";
+      try {
+        const { data, error } = await sb.auth.signInWithPassword({ email, password });
+        if (error) throw error;
+
+        const { data: exec, error: execErr } = await sb
+          .from("executive_accounts")
+          .select("id, full_name, email, tribe_id")
+          .eq("id", data.user.id)
+          .maybeSingle();
+        if (execErr) throw execErr;
+        if (!exec) {
+          await sb.auth.signOut();
+          throw new Error("This account is not registered as an HPF Executive.");
+        }
+        await openDashboard(exec);
+      } catch (err) {
+        showError(errorBox, err.message || String(err));
+      } finally {
+        btn.disabled = false; btn.textContent = "Sign in";
+      }
+    };
+
+    async function openDashboard(exec) {
+      currentExec = exec;
+      authView.classList.add("hidden");
+      dashView.classList.remove("hidden");
+      document.getElementById("welcome").textContent = "Welcome, " + (exec.full_name || "Executive");
+      document.getElementById("execEmail").textContent = exec.email || "—";
+      document.getElementById("execMeta").textContent = "You are signed in as Executive";
+
+      const { data: tribe } = await sb.from("tribes").select("name").eq("id", exec.tribe_id).maybeSingle();
+      document.getElementById("tribeName").textContent = tribe?.name || "—";
+
+      const { data: hostels } = await sb
+        .from("hostels").select("id, name").eq("tribe_id", exec.tribe_id).order("name");
+      const sel = document.getElementById("hostelSelect");
+      sel.innerHTML = "";
+      (hostels || []).forEach(h => {
+        const opt = document.createElement("option");
+        opt.value = h.id; opt.textContent = h.name; sel.appendChild(opt);
+      });
+      if (!hostels || !hostels.length) {
+        const opt = document.createElement("option");
+        opt.value = ""; opt.textContent = "No hostels yet — ask Admin to add some";
+        sel.appendChild(opt);
+      }
+    }
+
+    document.getElementById("submitReport").onclick = async () => {
+      showError(dashError, ""); showOk(dashOk, "");
+      const hostelId = document.getElementById("hostelSelect").value;
+      const week = Number(document.getElementById("weekNumber").value);
+      const content = document.getElementById("reportText").value.trim();
+      if (!hostelId) return showError(dashError, "No hostel selected.");
+      if (!week) return showError(dashError, "Enter week number.");
+      if (!content) return showError(dashError, "Write the report first.");
+
+      const { error } = await sb.from("weekly_reports").insert({
+        tribe_id: currentExec.tribe_id,
+        hostel_id: hostelId,
+        executive_id: currentExec.id,
+        week_number: week,
+        content: content
+      });
+      if (error) showError(dashError, error.message);
+      else {
+        showOk(dashOk, "Report submitted. Admin can see it now.");
+        document.getElementById("reportText").value = "";
+      }
+    };
+
+    document.getElementById("logoutBtn").onclick = async () => {
+      await sb.auth.signOut();
+      currentExec = null;
+      dashView.classList.add("hidden");
+      authView.classList.remove("hidden");
+    };
+
+    (async () => {
+      const { data } = await sb.auth.getSession();
+      if (!data.session) return;
+      const { data: exec } = await sb
+        .from("executive_accounts")
+        .select("id, full_name, email, tribe_id")
+        .eq("id", data.session.user.id)
+        .maybeSingle();
+      if (exec) openDashboard(exec);
+    })();
+  </script>
+</body>
+</html>
