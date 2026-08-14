@@ -1,1 +1,252 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>HPF Admin Dashboard Summary</title>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <style>
+    :root {
+      --bg:#0b0f0c; --card:#121a14; --line:#1e2a22; --text:#e8f0ea;
+      --muted:#8fa396; --accent:#c8f54a; --input:#0e1511;
+    }
+    *{box-sizing:border-box}
+    body{
+      margin:0;min-height:100vh;color:var(--text);
+      font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;
+      background:radial-gradient(1200px 600px at 50% -10%,#16301c 0%,var(--bg) 55%);
+    }
+    .wrap{max-width:960px;margin:0 auto;padding:20px 12px 40px}
+    .logo{
+      width:44px;height:44px;border-radius:12px;background:var(--accent);color:#111;
+      display:grid;place-items:center;font-weight:800;font-size:20px;margin:0 auto 8px
+    }
+    .pill{text-align:center;color:var(--accent);font-size:12px;letter-spacing:.12em;font-weight:700;margin:0 0 6px}
+    h1{text-align:center;margin:0 0 6px;font-size:24px}
+    .sub{text-align:center;color:var(--muted);margin:0 0 16px;font-size:14px}
+    .card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px;margin-bottom:12px}
+    label{display:block;font-size:13px;color:var(--muted);margin:10px 0 6px}
+    input{
+      width:100%;background:var(--input);border:1px solid var(--line);border-radius:10px;
+      padding:11px 12px;color:var(--text);font-size:15px;outline:none
+    }
+    button{border:0;border-radius:10px;padding:11px 14px;font-size:14px;font-weight:700;cursor:pointer}
+    .primary{background:var(--accent);color:#111;width:100%;margin-top:12px}
+    .ghost{background:transparent;color:var(--muted)}
+    .error{display:none;margin-top:10px;border-radius:10px;padding:10px;font-size:14px;background:#3a1515;color:#ffb4b4;border:1px solid #5c2424}
+    .error.show{display:block}
+    .hidden{display:none!important}
+    .top{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:12px;flex-wrap:wrap}
+    .top h1{margin:0;font-size:22px;text-align:left}
+    .links{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px}
+    .links a{
+      color:#111;background:var(--accent);text-decoration:none;font-weight:700;
+      padding:8px 12px;border-radius:999px;font-size:13px
+    }
+    .links a.secondary{background:#1a2a1e;color:var(--accent);border:1px solid #2f4a36}
+    .grid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-bottom:14px}
+    @media(min-width:700px){.grid{grid-template-columns:repeat(4,1fr)}}
+    .stat{background:#0e1511;border:1px solid var(--line);border-radius:14px;padding:14px}
+    .stat .n{font-size:28px;font-weight:800;color:var(--accent);line-height:1.1}
+    .stat .l{font-size:12px;color:var(--muted);margin-top:4px}
+    .section-title{margin:8px 0 10px;font-size:16px}
+    .row{border:1px solid var(--line);border-radius:12px;padding:12px;margin-bottom:8px;background:#0e1511}
+    .row b{color:var(--accent)}
+    .meta{color:var(--muted);font-size:12px;margin-top:4px}
+    .bar-wrap{height:8px;background:#1a2a1e;border-radius:99px;overflow:hidden;margin-top:8px}
+    .bar{height:100%;background:var(--accent);width:0%}
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div id="loginView">
+      <div class="logo">✦</div>
+      <p class="pill">HPF ADMIN</p>
+      <h1>Summary Dashboard</h1>
+      <p class="sub">Overview of tribes, executives, hostels and reports</p>
+      <div class="card">
+        <label>Email</label>
+        <input id="email" type="email" />
+        <label>Password</label>
+        <input id="password" type="password" />
+        <button class="primary" id="loginBtn" type="button">Sign in</button>
+        <div class="error" id="loginError"></div>
+      </div>
+    </div>
 
+    <div id="dashView" class="hidden">
+      <div class="logo">✦</div>
+      <p class="pill">HPF ADMIN</p>
+      <div class="top">
+        <h1>Summary Dashboard</h1>
+        <button class="ghost" id="logoutBtn" type="button">Sign out</button>
+      </div>
+      <div class="links">
+        <a href="./admin-manage.html">Manage</a>
+        <a class="secondary" href="./admin-reports.html">Full Reports</a>
+        <a class="secondary" href="https://hpf-executive-tribes.vercel.app" target="_blank">Main Admin</a>
+      </div>
+      <div class="grid" id="stats"></div>
+      <div class="card"><div class="section-title">This week</div><div id="weekBox" class="meta">Loading...</div></div>
+      <div class="card"><div class="section-title">Attendance by tribe</div><div id="tribeBox">Loading...</div></div>
+      <div class="card"><div class="section-title">Recent reports</div><div id="recentBox">Loading...</div></div>
+      <div class="card"><div class="section-title">Executives without reports</div><div id="missingBox">Loading...</div></div>
+      <div class="error" id="dashError"></div>
+    </div>
+  </div>
+  <script>
+    const SUPABASE_URL = "https://pexepaclinlqcwjuzhen.supabase.co";
+    const SUPABASE_KEY = "sb_publishable_U7WdBF49bn0x0cJ8t3s2WQ_5w4mnty5";
+    const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+    const loginView = document.getElementById("loginView");
+    const dashView = document.getElementById("dashView");
+    const loginError = document.getElementById("loginError");
+    const dashError = document.getElementById("dashError");
+
+    function show(el, msg) {
+      el.textContent = msg || "";
+      el.classList.toggle("show", !!msg);
+    }
+    function esc(s) {
+      return String(s ?? "")
+        .replaceAll("&", "&amp;").replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;").replaceAll('"', "&quot;");
+    }
+    function weekNumber(d) {
+      const date = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
+      const dayNum = date.getUTCDay() || 7;
+      date.setUTCDate(date.getUTCDate() + 4 - dayNum);
+      const yearStart = new Date(Date.UTC(date.getUTCFullYear(), 0, 1));
+      return Math.ceil((((date - yearStart) / 86400000) + 1) / 7);
+    }
+
+    async function requireAdmin(uid) {
+      const { data, error } = await sb.from("admin_accounts").select("id").eq("id", uid).maybeSingle();
+      if (error) throw error;
+      return !!data;
+    }
+
+    async function loadDashboard() {
+      show(dashError, "");
+      const [t, h, e, r] = await Promise.all([
+        sb.from("tribes").select("id, name"),
+        sb.from("hostels").select("id, name, tribe_id"),
+        sb.from("executive_accounts").select("id, full_name, email, tribe_id"),
+        sb.from("weekly_reports").select("id, title, week_number, attendance, duration, comment, content, created_at, tribe_id, executive_id, hostel_id").order("created_at", { ascending: false })
+      ]);
+      if (t.error) throw t.error;
+      if (h.error) throw h.error;
+      if (e.error) throw e.error;
+      if (r.error) throw r.error;
+
+      const tribes = t.data || [];
+      const hostels = h.data || [];
+      const execs = e.data || [];
+      const reports = r.data || [];
+
+      const totalAttendance = reports.reduce((s, x) => s + (Number(x.attendance) || 0), 0);
+      const currentWeek = weekNumber(new Date());
+      const weekReports = reports.filter(x => Number(x.week_number) === currentWeek);
+      const weekAttendance = weekReports.reduce((s, x) => s + (Number(x.attendance) || 0), 0);
+
+      document.getElementById("stats").innerHTML = `
+        <div class="stat"><div class="n">${tribes.length}</div><div class="l">Tribes</div></div>
+        <div class="stat"><div class="n">${hostels.length}</div><div class="l">Hostels</div></div>
+        <div class="stat"><div class="n">${execs.length}</div><div class="l">Executives</div></div>
+        <div class="stat"><div class="n">${reports.length}</div><div class="l">All reports</div></div>
+        <div class="stat"><div class="n">${totalAttendance}</div><div class="l">Total attendance</div></div>
+        <div class="stat"><div class="n">\( {weekReports.length}</div><div class="l">Reports this week (# \){currentWeek})</div></div>
+        <div class="stat"><div class="n">${weekAttendance}</div><div class="l">Attendance this week</div></div>
+        <div class="stat"><div class="n">${execs.length ? Math.round((new Set(reports.map(x => x.executive_id).filter(Boolean)).size / execs.length) * 100) : 0}%</div><div class="l">Executives who ever reported</div></div>
+      `;
+
+      document.getElementById("weekBox").innerHTML = weekReports.length
+        ? weekReports.slice(0, 10).map(x => {
+            const tribe = tribes.find(tt => tt.id === x.tribe_id);
+            return `<div class="row"><b>${esc(x.title || "Untitled")}</b>
+              <div class="meta">${esc(tribe ? tribe.name : "—")} · Attendance ${x.attendance ?? "—"} · ${esc(x.duration || "—")}</div></div>`;
+          }).join("")
+        : `<div class="meta">No reports for week ${currentWeek} yet.</div>`;
+      // attendance by tribe
+      const byTribe = {};
+      tribes.forEach(tt => { byTribe[tt.id] = { name: tt.name, attendance: 0, reports: 0 }; });
+      reports.forEach(x => {
+        if (!x.tribe_id) return;
+        if (!byTribe[x.tribe_id]) byTribe[x.tribe_id] = { name: "Unknown", attendance: 0, reports: 0 };
+        byTribe[x.tribe_id].attendance += Number(x.attendance) || 0;
+        byTribe[x.tribe_id].reports += 1;
+      });
+      const tribeRows = Object.values(byTribe).sort((a, b) => b.attendance - a.attendance);
+      const maxAtt = Math.max(1, ...tribeRows.map(x => x.attendance));
+      document.getElementById("tribeBox").innerHTML = tribeRows.length
+        ? tribeRows.map(x => `
+            <div class="row">
+              <b>${esc(x.name)}</b>
+              <div class="meta">${x.reports} reports · ${x.attendance} attendance</div>
+              <div class="bar-wrap"><div class="bar" style="width:${Math.round((x.attendance / maxAtt) * 100)}%"></div></div>
+            </div>
+          `).join("")
+        : `<div class="meta">No tribe data yet.</div>`;
+
+      // recent reports
+      document.getElementById("recentBox").innerHTML = reports.length
+        ? reports.slice(0, 8).map(x => {
+            const tribe = tribes.find(tt => tt.id === x.tribe_id);
+            const when = x.created_at ? new Date(x.created_at).toLocaleString() : "—";
+            return `<div class="row"><b>${esc(x.title || "Untitled")}</b>
+              <div class="meta">Week ${x.week_number ?? "—"} · ${esc(tribe ? tribe.name : "—")} · ${esc(when)}</div>
+              <div class="meta">${esc((x.comment || x.content || "").slice(0, 120))}</div></div>`;
+          }).join("")
+        : `<div class="meta">No reports yet.</div>`;
+
+      // executives with zero reports
+      const reported = new Set(reports.map(x => x.executive_id).filter(Boolean));
+      const missing = execs.filter(x => !reported.has(x.id));
+      document.getElementById("missingBox").innerHTML = missing.length
+        ? missing.map(x => {
+            const tribe = tribes.find(tt => tt.id === x.tribe_id);
+            return `<div class="row"><b>${esc(x.full_name || x.email || "—")}</b>
+              <div class="meta">${esc(x.email || "")} · ${esc(tribe ? tribe.name : "No tribe")}</div></div>`;
+          }).join("")
+        : `<div class="meta">All executives have at least one report (or no executives yet).</div>`;
+    }
+
+    document.getElementById("loginBtn").onclick = async () => {
+      show(loginError, "");
+      const email = document.getElementById("email").value.trim();
+      const password = document.getElementById("password").value;
+      try {
+        const { data, error } = await sb.auth.signInWithPassword({ email, password });
+        if (error) throw error;
+        const ok = await requireAdmin(data.user.id);
+        if (!ok) {
+          await sb.auth.signOut();
+          throw new Error("This account is not an HPF Admin.");
+        }
+        loginView.classList.add("hidden");
+        dashView.classList.remove("hidden");
+        await loadDashboard();
+      } catch (err) {
+        show(loginError, err.message || String(err));
+      }
+    };
+
+    document.getElementById("logoutBtn").onclick = async () => {
+      await sb.auth.signOut();
+      dashView.classList.add("hidden");
+      loginView.classList.remove("hidden");
+    };
+
+    (async () => {
+      const { data } = await sb.auth.getSession();
+      if (!data.session) return;
+      const ok = await requireAdmin(data.session.user.id);
+      if (!ok) return;
+      loginView.classList.add("hidden");
+      dashView.classList.remove("hidden");
+      try { await loadDashboard(); } catch (e) { show(dashError, e.message || String(e)); }
+    })();
+  </script>
+</body>
+</html>
