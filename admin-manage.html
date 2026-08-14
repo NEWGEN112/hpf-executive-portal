@@ -1,1 +1,401 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>HPF Admin Manage</title>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <style>
+    :root {
+      --bg:#0b0f0c; --card:#121a14; --line:#1e2a22; --text:#e8f0ea;
+      --muted:#8fa396; --accent:#c8f54a; --input:#0e1511; --danger:#e85d5d;
+    }
+    *{box-sizing:border-box}
+    body{
+      margin:0;min-height:100vh;color:var(--text);
+      font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;
+      background:radial-gradient(1200px 600px at 50% -10%,#16301c 0%,var(--bg) 55%);
+    }
+    .wrap{max-width:920px;margin:0 auto;padding:20px 12px 40px}
+    .logo{
+      width:44px;height:44px;border-radius:12px;background:var(--accent);color:#111;
+      display:grid;place-items:center;font-weight:800;font-size:20px;margin:0 auto 8px
+    }
+    .pill{text-align:center;color:var(--accent);font-size:12px;letter-spacing:.12em;font-weight:700;margin:0 0 6px}
+    h1{text-align:center;margin:0 0 6px;font-size:24px}
+    .sub{text-align:center;color:var(--muted);margin:0 0 16px;font-size:14px}
+    .card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px;margin-bottom:12px}
+    label{display:block;font-size:13px;color:var(--muted);margin:10px 0 6px}
+    input,select{
+      width:100%;background:var(--input);border:1px solid var(--line);border-radius:10px;
+      padding:11px 12px;color:var(--text);font-size:15px;outline:none
+    }
+    button{
+      border:0;border-radius:10px;padding:10px 12px;font-size:14px;font-weight:700;cursor:pointer
+    }
+    .primary{background:var(--accent);color:#111;width:100%;margin-top:12px}
+    .ghost{background:transparent;color:var(--muted)}
+    .danger{background:#3a1515;color:#ffb4b4;border:1px solid #5c2424}
+    .row-btns{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px}
+    .row-btns button{flex:1;min-width:90px}
+    .tabs{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin:12px 0}
+    .tab{background:#0e1511;color:var(--muted);border:1px solid var(--line);padding:10px 6px}
+    .tab.active{background:#1a2a1e;color:var(--accent);border-color:#2f4a36}
+    .item{
+      border:1px solid var(--line);border-radius:12px;padding:12px;margin-bottom:10px;background:#0e1511
+    }
+    .item h3{margin:0 0 6px;font-size:15px}
+    .meta{color:var(--muted);font-size:12px;margin-bottom:6px}
+    .error,.ok{display:none;margin-top:10px;border-radius:10px;padding:10px;font-size:14px}
+    .error{background:#3a1515;color:#ffb4b4;border:1px solid #5c2424}
+    .ok{background:#14301a;color:#b7f5c2;border:1px solid #2a5a36}
+    .error.show,.ok.show{display:block}
+    .hidden{display:none!important}
+    .top{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:8px}
+    @media(max-width:560px){.tabs{grid-template-columns:1fr 1fr}}
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div id="loginView">
+      <div class="logo">✦</div>
+      <p class="pill">HPF ADMIN</p>
+      <h1>Manage</h1>
+      <p class="sub">Edit / delete tribes, hostels, executives, reports</p>
+      <div class="card">
+        <label>Email</label>
+        <input id="email" type="email" />
+        <label>Password</label>
+        <input id="password" type="password" />
+        <button class="primary" id="loginBtn" type="button">Sign in</button>
+        <div class="error" id="loginError"></div>
+      </div>
+    </div>
 
+    <div id="appView" class="hidden">
+      <div class="logo">✦</div>
+      <p class="pill">HPF ADMIN</p>
+      <div class="top">
+        <h1 style="margin:0;font-size:22px;text-align:left">Manage</h1>
+        <button class="ghost" id="logoutBtn" type="button">Sign out</button>
+      </div>
+
+      <div class="tabs">
+        <button class="tab active" data-tab="tribes" type="button">Tribes</button>
+        <button class="tab" data-tab="hostels" type="button">Hostels</button>
+        <button class="tab" data-tab="executives" type="button">Executives</button>
+        <button class="tab" data-tab="reports" type="button">Reports</button>
+      </div>
+
+      <div class="error" id="msgError"></div>
+      <div class="ok" id="msgOk"></div>
+
+      <div id="panel-tribes"></div>
+      <div id="panel-hostels" class="hidden"></div>
+      <div id="panel-executives" class="hidden"></div>
+      <div id="panel-reports" class="hidden"></div>
+    </div>
+        </div>
+  <script>
+    const SUPABASE_URL = "https://pexepaclinlqcwjuzhen.supabase.co";
+    const SUPABASE_KEY = "sb_publishable_U7WdBF49bn0x0cJ8t3s2WQ_5w4mnty5";
+    const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+    const loginView = document.getElementById("loginView");
+    const appView = document.getElementById("appView");
+    const loginError = document.getElementById("loginError");
+    const msgError = document.getElementById("msgError");
+    const msgOk = document.getElementById("msgOk");
+
+    let tribes = [];
+    let hostels = [];
+    let executives = [];
+    let reports = [];
+
+    function show(el, msg) {
+      el.textContent = msg || "";
+      el.classList.toggle("show", !!msg);
+    }
+    function clearMsg() { show(msgError, ""); show(msgOk, ""); }
+    function esc(s) {
+      return String(s ?? "")
+        .replaceAll("&", "&amp;").replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;").replaceAll('"', "&quot;");
+    }
+
+    async function requireAdmin(uid) {
+      const { data, error } = await sb.from("admin_accounts").select("id").eq("id", uid).maybeSingle();
+      if (error) throw error;
+      return !!data;
+    }
+
+    async function loadAll() {
+      clearMsg();
+      const [t, h, e, r] = await Promise.all([
+        sb.from("tribes").select("*").order("name"),
+        sb.from("hostels").select("*").order("name"),
+        sb.from("executive_accounts").select("*").order("full_name"),
+        sb.from("weekly_reports").select("*").order("created_at", { ascending: false })
+      ]);
+      if (t.error) throw t.error;
+      if (h.error) throw h.error;
+      if (e.error) throw e.error;
+      if (r.error) throw r.error;
+      tribes = t.data || [];
+      hostels = h.data || [];
+      executives = e.data || [];
+      reports = r.data || [];
+      renderTribes();
+      renderHostels();
+      renderExecutives();
+      renderReports();
+    }
+
+    function tribeName(id) {
+      const t = tribes.find(x => x.id === id);
+      return t ? t.name : "—";
+    }
+
+    function renderTribes() {
+      const el = document.getElementById("panel-tribes");
+      el.innerHTML = `
+        <div class="card">
+          <h3 style="margin:0 0 8px">Add tribe</h3>
+          <label>Name</label>
+          <input id="newTribeName" placeholder="Tribe name" />
+          <label>Registration code</label>
+          <input id="newTribeCode" placeholder="Code for executives" />
+          <button class="primary" id="addTribeBtn" type="button">Add tribe</button>
+        </div>
+        ${tribes.map(t => `
+          <div class="item" data-id="${t.id}">
+            <h3>${esc(t.name)}</h3>
+            <div class="meta">Code: ${esc(t.registration_code || "—")}</div>
+            <label>Name</label>
+            <input class="t-name" value="${esc(t.name)}" />
+            <label>Registration code</label>
+            <input class="t-code" value="${esc(t.registration_code || "")}" />
+            <div class="row-btns">
+              <button class="primary save-tribe" type="button">Save</button>
+              <button class="danger del-tribe" type="button">Delete</button>
+            </div>
+          </div>
+        `).join("") || '<p class="meta">No tribes yet.</p>'}
+      `;
+
+      document.getElementById("addTribeBtn").onclick = async () => {
+        clearMsg();
+        const name = document.getElementById("newTribeName").value.trim();
+        const code = document.getElementById("newTribeCode").value.trim();
+        if (!name || !code) return show(msgError, "Enter tribe name and code.");
+        const { error } = await sb.from("tribes").insert({ name, registration_code: code });
+        if (error) return show(msgError, error.message);
+        show(msgOk, "Tribe added.");
+        await loadAll();
+      };
+
+      el.querySelectorAll(".item").forEach(item => {
+        const id = item.getAttribute("data-id");
+        item.querySelector(".save-tribe").onclick = async () => {
+          clearMsg();
+          const name = item.querySelector(".t-name").value.trim();
+          const code = item.querySelector(".t-code").value.trim();
+          if (!name || !code) return show(msgError, "Name and code required.");
+          const { error } = await sb.from("tribes").update({ name, registration_code: code }).eq("id", id);
+          if (error) return show(msgError, error.message);
+          show(msgOk, "Tribe updated.");
+          await loadAll();
+        };
+        item.querySelector(".del-tribe").onclick = async () => {
+          if (!confirm("Delete this tribe? Hostels linked to it may also be removed.")) return;
+          clearMsg();
+          const { error } = await sb.from("tribes").delete().eq("id", id);
+          if (error) return show(msgError, error.message);
+          show(msgOk, "Tribe deleted.");
+          await loadAll();
+        };
+      });
+      function renderHostels() {
+      const el = document.getElementById("panel-hostels");
+      const tribeOptions = tribes.map(t => `<option value="\( {t.id}"> \){esc(t.name)}</option>`).join("");
+      el.innerHTML = `
+        <div class="card">
+          <h3 style="margin:0 0 8px">Add hostel</h3>
+          <label>Hostel name</label>
+          <input id="newHostelName" placeholder="Hostel name" />
+          <label>Tribe</label>
+          <select id="newHostelTribe">${tribeOptions}</select>
+          <button class="primary" id="addHostelBtn" type="button">Add hostel</button>
+        </div>
+        ${hostels.map(h => `
+          <div class="item" data-id="${h.id}">
+            <h3>${esc(h.name)}</h3>
+            <div class="meta">Tribe: ${esc(tribeName(h.tribe_id))}</div>
+            <label>Name</label>
+            <input class="h-name" value="${esc(h.name)}" />
+            <label>Tribe</label>
+            <select class="h-tribe">${tribes.map(t =>
+              `<option value="${t.id}" \( {t.id===h.tribe_id?"selected":""}> \){esc(t.name)}</option>`
+            ).join("")}</select>
+            <div class="row-btns">
+              <button class="primary save-hostel" type="button">Save</button>
+              <button class="danger del-hostel" type="button">Delete</button>
+            </div>
+          </div>
+        `).join("") || '<p class="meta">No hostels yet.</p>'}
+      `;
+
+      document.getElementById("addHostelBtn").onclick = async () => {
+        clearMsg();
+        const name = document.getElementById("newHostelName").value.trim();
+        const tribe_id = document.getElementById("newHostelTribe").value;
+        if (!name || !tribe_id) return show(msgError, "Enter hostel name and tribe.");
+        const { error } = await sb.from("hostels").insert({ name, tribe_id });
+        if (error) return show(msgError, error.message);
+        show(msgOk, "Hostel added.");
+        await loadAll();
+      };
+
+      el.querySelectorAll(".item").forEach(item => {
+        const id = item.getAttribute("data-id");
+        item.querySelector(".save-hostel").onclick = async () => {
+          clearMsg();
+          const name = item.querySelector(".h-name").value.trim();
+          const tribe_id = item.querySelector(".h-tribe").value;
+          if (!name) return show(msgError, "Name required.");
+          const { error } = await sb.from("hostels").update({ name, tribe_id }).eq("id", id);
+          if (error) return show(msgError, error.message);
+          show(msgOk, "Hostel updated.");
+          await loadAll();
+        };
+        item.querySelector(".del-hostel").onclick = async () => {
+          if (!confirm("Delete this hostel?")) return;
+          clearMsg();
+          const { error } = await sb.from("hostels").delete().eq("id", id);
+          if (error) return show(msgError, error.message);
+          show(msgOk, "Hostel deleted.");
+          await loadAll();
+        };
+      });
+    }
+
+    function renderExecutives() {
+      const el = document.getElementById("panel-executives");
+      el.innerHTML = executives.map(ex => `
+        <div class="item" data-id="${ex.id}">
+          <h3>${esc(ex.full_name || "—")}</h3>
+          <div class="meta">${esc(ex.email || "—")} · Tribe: ${esc(tribeName(ex.tribe_id))}</div>
+          <label>Full name</label>
+          <input class="e-name" value="${esc(ex.full_name || "")}" />
+          <label>Email (display only)</label>
+          <input value="${esc(ex.email || "")}" disabled />
+          <label>Tribe</label>
+          <select class="e-tribe">${tribes.map(t =>
+            `<option value="${t.id}" \( {t.id===ex.tribe_id?"selected":""}> \){esc(t.name)}</option>`
+          ).join("")}<option value="" ${!ex.tribe_id?"selected":""}>— none —</option></select>
+          <div class="row-btns">
+            <button class="primary save-exec" type="button">Save</button>
+            <button class="danger del-exec" type="button">Remove</button>
+          </div>
+        </div>
+      `).join("") || '<p class="meta">No executives yet.</p>';
+
+      el.querySelectorAll(".item").forEach(item => {
+        const id = item.getAttribute("data-id");
+        item.querySelector(".save-exec").onclick = async () => {
+          clearMsg();
+          const full_name = item.querySelector(".e-name").value.trim();
+          const tribe_id = item.querySelector(".e-tribe").value || null;
+          if (!full_name) return show(msgError, "Name required.");
+          const { error } = await sb.from("executive_accounts").update({ full_name, tribe_id }).eq("id", id);
+          if (error) return show(msgError, error.message);
+          show(msgOk, "Executive updated.");
+          await loadAll();
+        };
+        item.querySelector(".del-exec").onclick = async () => {
+          if (!confirm("Remove this executive profile? (Auth login user is not deleted)")) return;
+          clearMsg();
+          const { error } = await sb.from("executive_accounts").delete().eq("id", id);
+          if (error) return show(msgError, error.message);
+          show(msgOk, "Executive removed.");
+          await loadAll();
+        };
+      });
+              }
+      function renderReports() {
+      const el = document.getElementById("panel-reports");
+      el.innerHTML = reports.map(r => `
+        <div class="item" data-id="${r.id}">
+          <h3>${esc(r.title || "Untitled")}</h3>
+          <div class="meta">
+            Week ${r.week_number ?? "—"} · Attendance ${r.attendance ?? "—"} · ${esc(r.duration || "—")}
+          </div>
+          <div class="meta">${esc(r.comment || r.content || "")}</div>
+          <div class="row-btns">
+            <button class="danger del-report" type="button">Delete report</button>
+          </div>
+        </div>
+      `).join("") || '<p class="meta">No reports yet.</p>';
+
+      el.querySelectorAll(".item").forEach(item => {
+        const id = item.getAttribute("data-id");
+        item.querySelector(".del-report").onclick = async () => {
+          if (!confirm("Delete this report?")) return;
+          clearMsg();
+          const { error } = await sb.from("weekly_reports").delete().eq("id", id);
+          if (error) return show(msgError, error.message);
+          show(msgOk, "Report deleted.");
+          await loadAll();
+        };
+      });
+    }
+
+    document.querySelectorAll(".tab").forEach(btn => {
+      btn.onclick = () => {
+        document.querySelectorAll(".tab").forEach(b => b.classList.remove("active"));
+        btn.classList.add("active");
+        ["tribes","hostels","executives","reports"].forEach(name => {
+          document.getElementById("panel-" + name).classList.toggle("hidden", name !== btn.dataset.tab);
+        });
+      };
+    });
+
+    document.getElementById("loginBtn").onclick = async () => {
+      show(loginError, "");
+      const email = document.getElementById("email").value.trim();
+      const password = document.getElementById("password").value;
+      try {
+        const { data, error } = await sb.auth.signInWithPassword({ email, password });
+        if (error) throw error;
+        const ok = await requireAdmin(data.user.id);
+        if (!ok) {
+          await sb.auth.signOut();
+          throw new Error("This account is not an HPF Admin.");
+        }
+        loginView.classList.add("hidden");
+        appView.classList.remove("hidden");
+        await loadAll();
+      } catch (err) {
+        show(loginError, err.message || String(err));
+      }
+    };
+
+    document.getElementById("logoutBtn").onclick = async () => {
+      await sb.auth.signOut();
+      appView.classList.add("hidden");
+      loginView.classList.remove("hidden");
+    };
+
+    (async () => {
+      const { data } = await sb.auth.getSession();
+      if (!data.session) return;
+      const ok = await requireAdmin(data.session.user.id);
+      if (!ok) return;
+      loginView.classList.add("hidden");
+      appView.classList.remove("hidden");
+      try { await loadAll(); } catch (e) { show(msgError, e.message || String(e)); }
+    })();
+  </script>
+</body>
+</html>
+    }
