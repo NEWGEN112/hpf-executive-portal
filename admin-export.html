@@ -176,7 +176,9 @@
 
       const sel = document.getElementById("tribeFilter");
       sel.innerHTML = '<option value="">All tribes</option>' +
-        tribes.map(x => `<option value="\( {x.id}"> \){esc(x.name)}</option>`).join("");
+        tribes.map(function(x) {
+          return '<option value="' + x.id + '">' + esc(x.name) + '</option>';
+        }).join('');
       refreshPreview();
       function downloadCSV() {
       const rows = filtered();
