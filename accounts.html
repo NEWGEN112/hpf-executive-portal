@@ -63,7 +63,21 @@
 </head>
 <body>
   <div class="wrap">
-    <div id="loginView">
+    <div id="gateView">
+      <img class="logo" src="./hpf-logo.jpg" alt="HPF Logo" />
+      <p class="pill">HPF ACCOUNTS</p>
+      <h1>Accounts Access</h1>
+      <p class="sub">Secret code required for Account Officer</p>
+      <div class="card">
+        <label>Secret code</label>
+        <input id="secretCode" type="password" placeholder="Enter secret code" />
+        <button class="primary" id="gateBtn" type="button">Continue</button>
+        <div class="error" id="gateError"></div>
+      </div>
+      <p class="sub"><a href="./portal.html" style="color:#c8f54a">Back to HPF Portal</a></p>
+    </div>
+
+    <div id="loginView" class="hidden">
       <img class="logo" src="./hpf-logo.jpg" alt="HPF Logo" />
       <p class="pill">HPF ACCOUNTS</p>
       <h1>Account Officer</h1>
@@ -172,17 +186,57 @@
       <div class="error" id="msgError"></div>
       <div class="ok" id="msgOk"></div>
     </div>
-            </div>
-            <script>
+  </div>
+  <script>
     var SUPABASE_URL = "https://pexepaclinlqcwjuzhen.supabase.co";
     var SUPABASE_KEY = "sb_publishable_U7WdBF49bn0x0cJ8t3s2WQ_5w4mnty5";
     var sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+    var ACCOUNTS_SECRET = "HPF-A7";
 
+    var gateView = document.getElementById("gateView");
     var loginView = document.getElementById("loginView");
     var appView = document.getElementById("appView");
+    var gateError = document.getElementById("gateError");
     var loginError = document.getElementById("loginError");
     var msgError = document.getElementById("msgError");
     var msgOk = document.getElementById("msgOk");
+
+    function accountsGateOk() {
+      return sessionStorage.getItem("hpf_accounts_ok") === "1";
+    }
+    function unlockAccountsGate() {
+      sessionStorage.setItem("hpf_accounts_ok", "1");
+      if (gateView) gateView.classList.add("hidden");
+      if (loginView) loginView.classList.remove("hidden");
+    }
+    function applyAccountsGate() {
+      if (accountsGateOk()) {
+        if (gateView) gateView.classList.add("hidden");
+        if (loginView) loginView.classList.remove("hidden");
+      } else {
+        if (gateView) gateView.classList.remove("hidden");
+        if (loginView) loginView.classList.add("hidden");
+        if (appView) appView.classList.add("hidden");
+      }
+    }
+    if (document.getElementById("gateBtn")) {
+      document.getElementById("gateBtn").onclick = function() {
+        var code = (document.getElementById("secretCode").value || "").trim();
+        if (code !== ACCOUNTS_SECRET) {
+          if (gateError) {
+            gateError.textContent = "Wrong secret code.";
+            gateError.classList.add("show");
+          }
+          return;
+        }
+        if (gateError) {
+          gateError.textContent = "";
+          gateError.classList.remove("show");
+        }
+        unlockAccountsGate();
+      };
+    }
+    applyAccountsGate();
 
     var role = null;
     var canEdit = false;
@@ -263,8 +317,8 @@
     }
     function resolveRole(uid) {
       return Promise.all([
-        sb.from("account_officer_accounts").select("id, full_name, email").eq("id", uid).maybeSingle(),
-        sb.from("president_accounts").select("id, full_name, email").eq("id", uid).maybeSingle()
+        sb.from("account_officer_accounts").select("id, full_name").eq("id", uid).maybeSingle(),
+        sb.from("president_accounts").select("id, full_name").eq("id", uid).maybeSingle()
       ]).then(function(res) {
         if (res[0].error) throw res[0].error;
         if (res[1].error) throw res[1].error;
@@ -416,6 +470,11 @@
       });
     }
     function openApp(info) {
+      if (!accountsGateOk()) {
+        applyAccountsGate();
+        return Promise.resolve();
+      }
+      if (gateView) gateView.classList.add("hidden");
       role = info.role;
       setEditMode(info.canEdit);
       var label = info.role === "officer" ? "Account Officer (can edit)" : "President (view only)";
@@ -485,8 +544,7 @@
       a.download = "HPF-Accounts-" + m + ".csv";
       a.click();
       show(msgOk, "CSV downloaded.");
-              }
-              function downloadPDF() {
+    }function downloadPDF() {
       show(msgError, "");
       var m = rangeLabel();
       var incRows = filteredIncome().sort(function(a, b) {
@@ -673,6 +731,11 @@
     };
 
     document.getElementById("loginBtn").onclick = function() {
+      if (!accountsGateOk()) {
+        show(loginError, "Enter secret code first.");
+        applyAccountsGate();
+        return;
+      }
       show(loginError, "");
       var email = document.getElementById("email").value.trim();
       var password = document.getElementById("password").value;
@@ -700,6 +763,7 @@
 
     sb.auth.getSession().then(function(res) {
       if (!res.data.session) return;
+      if (!accountsGateOk()) return;
       resolveRole(res.data.session.user.id).then(function(info) {
         if (!info) return;
         openApp(info).catch(function(e) { show(msgError, e.message || String(e)); });
