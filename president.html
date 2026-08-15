@@ -62,6 +62,12 @@
     .row{border:1px solid var(--line);border-radius:12px;padding:12px;margin-bottom:8px;background:#0e1511}
     .row b{color:var(--accent)}
     .meta{color:var(--muted);font-size:12px;margin-top:4px}
+    .table-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch}
+    table.execs{width:100%;border-collapse:collapse;font-size:13px;min-width:520px}
+    table.execs th,table.execs td{border:1px solid var(--line);padding:8px 10px;text-align:left;vertical-align:top}
+    table.execs th{background:#0e1511;color:var(--accent);font-weight:700}
+    table.execs tr:nth-child(even) td{background:#0e1511}
+    table.execs .muted{color:var(--muted);font-size:12px}
   </style>
 </head>
 <body>
@@ -119,6 +125,12 @@
       <div class="card">
         <div class="section-title">Recent reports</div>
         <div id="recentBox" class="meta">Loading...</div>
+      </div>
+
+      <div class="card">
+        <div class="section-title">Registered executives</div>
+        <p class="meta" style="margin-bottom:10px">Name, tribe and hostels under their tribe</p>
+        <div class="table-wrap" id="execTableBox">Loading...</div>
       </div>
 
       <div class="error" id="hubError"></div>
@@ -187,8 +199,6 @@
         for (var p = 0; p < reports.length; p++) {
           if (reports[p].executive_id) reported[reports[p].executive_id] = true;
         }
-        var reportedCount = 0;
-        for (var k in reported) if (reported.hasOwnProperty(k)) reportedCount++;
 
         document.getElementById("stats").innerHTML =
           '<div class="stat"><div class="n">' + tribes.length + '</div><div class="l">Tribes</div></div>' +
@@ -247,6 +257,40 @@
               '<div class="meta">Week ' + (rr.week_number == null ? "—" : rr.week_number) + " · " + esc(tn2) + " · " + esc(when) + "</div></div>";
           }
           document.getElementById("recentBox").innerHTML = rh;
+        }
+
+        var hostelsByTribe = {};
+        for (var hi = 0; hi < hostels.length; hi++) {
+          var hid = hostels[hi].tribe_id || "_none";
+          if (!hostelsByTribe[hid]) hostelsByTribe[hid] = [];
+          hostelsByTribe[hid].push(hostels[hi].name);
+        }
+        if (!execs.length) {
+          document.getElementById("execTableBox").innerHTML = '<div class="meta">No executives registered yet.</div>';
+        } else {
+          var sorted = execs.slice().sort(function(a, b) {
+            var na = String(a.full_name || a.email || "").toLowerCase();
+            var nb = String(b.full_name || b.email || "").toLowerCase();
+            return na.localeCompare(nb);
+          });
+          var th = '<table class="execs"><thead><tr>' +
+            '<th>#</th><th>Name</th><th>Email</th><th>Tribe</th><th>Hostels</th></tr></thead><tbody>';
+          for (var ei = 0; ei < sorted.length; ei++) {
+            var exr = sorted[ei];
+            var tn3 = "—";
+            for (var t4 = 0; t4 < tribes.length; t4++) if (tribes[t4].id === exr.tribe_id) tn3 = tribes[t4].name;
+            var hs = hostelsByTribe[exr.tribe_id] || [];
+            var htxt = hs.length ? hs.join(", ") : "—";
+            th += '<tr>' +
+              '<td>' + (ei + 1) + '</td>' +
+              '<td><b>' + esc(exr.full_name || "—") + '</b></td>' +
+              '<td class="muted">' + esc(exr.email || "—") + '</td>' +
+              '<td>' + esc(tn3) + '</td>' +
+              '<td class="muted">' + esc(htxt) + '</td>' +
+              '</tr>';
+          }
+          th += '</tbody></table>';
+          document.getElementById("execTableBox").innerHTML = th;
         }
       });
     }
