@@ -17,15 +17,9 @@
       background:radial-gradient(1200px 600px at 50% -10%,#16301c 0%,var(--bg) 55%);
     }
     .wrap{max-width:960px;margin:0 auto;padding:20px 12px 40px}
-    .logo {
-      width: 56px;
-      height: 56px;
-      border-radius: 14px;
-      object-fit: cover;
-      display: block;
-      margin: 0 auto 12px;
-      border: 2px solid var(--accent);
-      background: #0e1511;
+    .logo{
+      width:56px;height:56px;border-radius:14px;object-fit:cover;display:block;
+      margin:0 auto 12px;border:2px solid var(--accent);background:#0e1511;
     }
     .pill{text-align:center;color:var(--accent);font-size:12px;letter-spacing:.12em;font-weight:700;margin:0 0 6px}
     h1{text-align:center;margin:0 0 6px;font-size:24px}
@@ -37,46 +31,54 @@
       padding:11px 12px;color:var(--text);font-size:15px;outline:none
     }
     button{border:0;border-radius:10px;padding:11px 14px;font-size:14px;font-weight:700;cursor:pointer}
-    .primary{background:var(--accent);color:#111;width:100%;margin-top:12px}
+    .primary{background:var(--accent);color:#111;width:100%;margin-top:10px}
     .ghost{background:transparent;color:var(--muted)}
     .error{display:none;margin-top:10px;border-radius:10px;padding:10px;font-size:14px;background:#3a1515;color:#ffb4b4;border:1px solid #5c2424}
     .error.show{display:block}
     .hidden{display:none!important}
     .top{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:12px;flex-wrap:wrap}
     .top h1{margin:0;font-size:22px;text-align:left}
-    .grid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-bottom:14px}
+    .grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px}
     @media(min-width:700px){.grid{grid-template-columns:repeat(4,1fr)}}
     .stat{background:#0e1511;border:1px solid var(--line);border-radius:14px;padding:14px}
-    .stat .n{font-size:28px;font-weight:800;color:var(--accent);line-height:1.1}
+    .stat .n{font-size:22px;font-weight:800;color:var(--accent);line-height:1.1}
     .stat .l{font-size:12px;color:var(--muted);margin-top:4px}
-    .tools{display:grid;grid-template-columns:1fr;gap:8px}
-    @media(min-width:600px){.tools{grid-template-columns:1fr 1fr}}
-    .tools a{
-      display:block;text-decoration:none;color:#111;background:var(--accent);
-      font-weight:700;padding:14px 16px;border-radius:12px;text-align:center
-    }
-    .tools a.secondary{
-      background:#1a2a1e;color:var(--accent);border:1px solid #2f4a36
-    }
-    .section-title{margin:4px 0 10px;font-size:16px;font-weight:700}
-    .row{border:1px solid var(--line);border-radius:12px;padding:12px;margin-bottom:8px;background:#0e1511}
-    .row b{color:var(--accent)}
+    .item{border:1px solid var(--line);border-radius:12px;padding:12px;margin-bottom:8px;background:#0e1511}
+    .item b{color:var(--accent)}
     .meta{color:var(--muted);font-size:12px;margin-top:4px}
-    .table-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch}
-    table.execs{width:100%;border-collapse:collapse;font-size:13px;min-width:520px}
-    table.execs th,table.execs td{border:1px solid var(--line);padding:8px 10px;text-align:left;vertical-align:top}
-    table.execs th{background:#0e1511;color:var(--accent);font-weight:700}
-    table.execs tr:nth-child(even) td{background:#0e1511}
-    table.execs .muted{color:var(--muted);font-size:12px}
+    .tools{display:grid;grid-template-columns:1fr;gap:8px}
+    @media(min-width:640px){.tools{grid-template-columns:1fr 1fr}}
+    .tools a{
+      display:block;text-decoration:none;background:var(--accent);color:#111;
+      font-weight:700;padding:14px;border-radius:12px;text-align:center
+    }
+    .tools a.secondary{background:#1a2a1e;color:var(--accent);border:1px solid #2f4a36}
+    table.execs{width:100%;border-collapse:collapse;font-size:13px}
+    table.execs th,table.execs td{border-bottom:1px solid var(--line);padding:8px 6px;text-align:left;vertical-align:top}
+    table.execs th{color:var(--muted);font-weight:600}
   </style>
 </head>
 <body>
   <div class="wrap">
-    <div id="loginView">
+    <div id="gateView">
+      <img class="logo" src="./hpf-logo.jpg" alt="HPF Logo" />
+      <p class="pill">HPF PRESIDENT</p>
+      <h1>President Access</h1>
+      <p class="sub">Secret code required — not for Admin</p>
+      <div class="card">
+        <label>Secret code</label>
+        <input id="secretCode" type="password" placeholder="Enter secret code" />
+        <button class="primary" id="gateBtn" type="button">Continue</button>
+        <div class="error" id="gateError"></div>
+      </div>
+      <p class="sub"><a href="./portal.html" style="color:#c8f54a">Back to HPF Portal</a></p>
+    </div>
+
+    <div id="loginView" class="hidden">
       <img class="logo" src="./hpf-logo.jpg" alt="HPF Logo" />
       <p class="pill">HPF PRESIDENT</p>
       <h1>President Hub</h1>
-      <p class="sub">Full overview + access to every admin tool</p>
+      <p class="sub">Full overview + every admin tool</p>
       <div class="card">
         <label>Email</label>
         <input id="email" type="email" />
@@ -94,56 +96,46 @@
         <h1>President Hub</h1>
         <button class="ghost" id="logoutBtn" type="button">Sign out</button>
       </div>
-      <p class="sub" id="welcomeLine" style="text-align:left;margin-bottom:12px">Welcome</p>
-
+      <p class="sub" id="welcomeLine" style="text-align:left">Welcome</p>
       <div class="grid" id="stats"></div>
-
       <div class="card">
-        <div class="section-title">All tools (Admin access)</div>
+        <div style="font-weight:700;margin-bottom:8px">Tools</div>
         <div class="tools">
           <a href="./admin-dashboard.html">Summary Dashboard</a>
-          <a href="./admin-manage.html">Manage Tribes / Hostels / Executives</a>
           <a href="./admin-reports.html">Full Reports</a>
-          <a href="./admin-export.html">Month-end Export (PDF / Excel)</a>
-          <a href="./admin-schedule.html">All Hostel Schedules</a>
-          <a href="./accounts.html">Accounts (Income / Expense)</a>
-          <a class="secondary" href="https://hpf-executive-tribes.vercel.app" target="_blank">Main Admin Portal</a>
-          <a class="secondary" href="./index.html">Executive Portal</a>
-          <a class="secondary" href="./executive-schedule.html">Executive Schedule Page</a>
+          <a href="./admin-export.html">Export PDF / Excel</a>
+          <a href="./admin-manage.html">Manage Tribes & Hostels</a>
+          <a href="./admin-schedule.html">Hostel Prayer Timetable</a>
+          <a href="./admin-semesters.html">Semesters</a>
+          <a class="secondary" href="./accounts.html">Accounts (view)</a>
+          <a class="secondary" href="./portal.html">HPF Portal</a>
         </div>
       </div>
-
       <div class="card">
-        <div class="section-title">This week snapshot</div>
-        <div id="weekBox" class="meta">Loading...</div>
-      </div>
-
-      <div class="card">
-        <div class="section-title">Executives missing reports</div>
+        <div style="font-weight:700;margin-bottom:8px">Missing reports (this week)</div>
         <div id="missingBox" class="meta">Loading...</div>
       </div>
-
       <div class="card">
-        <div class="section-title">Recent reports</div>
+        <div style="font-weight:700;margin-bottom:8px">Recent reports</div>
         <div id="recentBox" class="meta">Loading...</div>
       </div>
-
       <div class="card">
-        <div class="section-title">Registered executives</div>
-        <p class="meta" style="margin-bottom:10px">Name, tribe and hostels under their tribe</p>
-        <div class="table-wrap" id="execTableBox">Loading...</div>
+        <div style="font-weight:700;margin-bottom:8px">Registered executives</div>
+        <div id="execsBox" class="meta">Loading...</div>
       </div>
-
       <div class="error" id="hubError"></div>
     </div>
   </div>
   <script>
     var SUPABASE_URL = "https://pexepaclinlqcwjuzhen.supabase.co";
     var SUPABASE_KEY = "sb_publishable_U7WdBF49bn0x0cJ8t3s2WQ_5w4mnty5";
+    var PRESIDENT_SECRET = "HPF-P7";
     var sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
+    var gateView = document.getElementById("gateView");
     var loginView = document.getElementById("loginView");
     var hubView = document.getElementById("hubView");
+    var gateError = document.getElementById("gateError");
     var loginError = document.getElementById("loginError");
     var hubError = document.getElementById("hubError");
 
@@ -163,140 +155,153 @@
       var yearStart = new Date(Date.UTC(date.getUTCFullYear(), 0, 1));
       return Math.ceil((((date - yearStart) / 86400000) + 1) / 7);
     }
+    function gateOk() {
+      return sessionStorage.getItem("hpf_president_ok") === "1";
+    }
+    function unlockGate() {
+      sessionStorage.setItem("hpf_president_ok", "1");
+      gateView.classList.add("hidden");
+      loginView.classList.remove("hidden");
+    }
+    function applyGate() {
+      if (gateOk()) {
+        gateView.classList.add("hidden");
+        loginView.classList.remove("hidden");
+      } else {
+        gateView.classList.remove("hidden");
+        loginView.classList.add("hidden");
+        hubView.classList.add("hidden");
+      }
+    }
     function requirePresident(uid) {
-      return sb.from("president_accounts").select("id, full_name, email").eq("id", uid).maybeSingle()
+      return sb.from("president_accounts").select("id, full_name").eq("id", uid).maybeSingle()
         .then(function(res) {
           if (res.error) throw res.error;
           return res.data;
         });
-    }function loadHub(pres) {
+    }
+    function loadHub(pres) {
       show(hubError, "");
       document.getElementById("welcomeLine").textContent =
-        "Signed in as " + (pres.full_name || pres.email || "President");
+        "Signed in as " + (pres.full_name || "President");
 
       return Promise.all([
         sb.from("tribes").select("id, name"),
         sb.from("hostels").select("id, name, tribe_id"),
-        sb.from("executive_accounts").select("id, full_name, email, tribe_id"),
-        sb.from("weekly_reports").select("id, title, week_number, attendance, duration, comment, content, created_at, tribe_id, executive_id, hostel_id").order("created_at", { ascending: false }),
-        sb.from("hostel_schedules").select("id, week_number, tribe_id, hostel_id")
+        sb.from("executive_accounts").select("id, full_name, tribe_id"),
+        sb.from("weekly_reports").select("id, title, week_number, attendance, duration, comment, content, created_at, tribe_id, executive_id, hostel_id").order("created_at", { ascending: false })
       ]).then(function(results) {
-        for (var i = 0; i < results.length; i++) {
-          if (results[i].error) throw results[i].error;
-        }
+        for (var i = 0; i < results.length; i++) if (results[i].error) throw results[i].error;
         var tribes = results[0].data || [];
         var hostels = results[1].data || [];
         var execs = results[2].data || [];
         var reports = results[3].data || [];
-        var schedules = results[4].data || [];
-
-        var totalAttendance = 0;
-        for (var r = 0; r < reports.length; r++) totalAttendance += Number(reports[r].attendance) || 0;
-        var currentWeek = weekNumber(new Date());
-        var weekReports = reports.filter(function(x) { return Number(x.week_number) === currentWeek; });
-        var weekAtt = 0;
-        for (var w = 0; w < weekReports.length; w++) weekAtt += Number(weekReports[w].attendance) || 0;
-        var reported = {};
-        for (var p = 0; p < reports.length; p++) {
-          if (reports[p].executive_id) reported[reports[p].executive_id] = true;
+        var tribeName = {};
+        for (var t = 0; t < tribes.length; t++) tribeName[tribes[t].id] = tribes[t].name;
+        var hostelName = {};
+        for (var h = 0; h < hostels.length; h++) hostelName[hostels[h].id] = hostels[h].name;
+        var hostelsByTribe = {};
+        for (var hh = 0; hh < hostels.length; hh++) {
+          var tid = hostels[hh].tribe_id;
+          if (!hostelsByTribe[tid]) hostelsByTribe[tid] = [];
+          hostelsByTribe[tid].push(hostels[hh].name);
         }
-
+        var thisWeek = weekNumber(new Date());
+        var reported = {};
+        for (var r = 0; r < reports.length; r++) {
+          if (Number(reports[r].week_number) === thisWeek && reports[r].executive_id) {
+            reported[reports[r].executive_id] = true;
+          }
+        }
+        var missing = [];
+        for (var e = 0; e < execs.length; e++) {
+          if (!reported[execs[e].id]) {
+            missing.push((execs[e].full_name || "Executive") + " · " + (tribeName[execs[e].tribe_id] || "Tribe"));
+          }
+        }
         document.getElementById("stats").innerHTML =
           '<div class="stat"><div class="n">' + tribes.length + '</div><div class="l">Tribes</div></div>' +
           '<div class="stat"><div class="n">' + hostels.length + '</div><div class="l">Hostels</div></div>' +
           '<div class="stat"><div class="n">' + execs.length + '</div><div class="l">Executives</div></div>' +
-          '<div class="stat"><div class="n">' + reports.length + '</div><div class="l">All reports</div></div>' +
-          '<div class="stat"><div class="n">' + totalAttendance + '</div><div class="l">Total attendance</div></div>' +
-          '<div class="stat"><div class="n">' + weekReports.length + '</div><div class="l">Reports this week</div></div>' +
-          '<div class="stat"><div class="n">' + weekAtt + '</div><div class="l">Attendance this week</div></div>' +
-          '<div class="stat"><div class="n">' + schedules.length + '</div><div class="l">Schedule slots</div></div>';
+          '<div class="stat"><div class="n">' + reports.length + '</div><div class="l">Reports</div></div>';
 
-        if (!weekReports.length) {
-          document.getElementById("weekBox").innerHTML = '<div class="meta">No reports for week ' + currentWeek + ' yet.</div>';
-        } else {
-          var wh = "";
-          var maxw = Math.min(8, weekReports.length);
-          for (var i2 = 0; i2 < maxw; i2++) {
-            var x = weekReports[i2];
-            var tname = "—";
-            for (var ti = 0; ti < tribes.length; ti++) if (tribes[ti].id === x.tribe_id) tname = tribes[ti].name;
-            wh += '<div class="row"><b>' + esc(x.title || "Untitled") + '</b>' +
-              '<div class="meta">' + esc(tname) + " · Attendance " + (x.attendance == null ? "—" : x.attendance) + " · " + esc(x.duration || "—") + "</div></div>";
-          }
-          document.getElementById("weekBox").innerHTML = wh;
-        }
-
-        var missing = [];
-        for (var e = 0; e < execs.length; e++) {
-          if (!reported[execs[e].id]) missing.push(execs[e]);
-        }
         if (!missing.length) {
-          document.getElementById("missingBox").innerHTML = '<div class="meta">All executives have at least one report (or no executives yet).</div>';
+          document.getElementById("missingBox").innerHTML = '<div class="meta">All executives have a report for week ' + thisWeek + '.</div>';
         } else {
           var mh = "";
-          for (var m = 0; m < missing.length; m++) {
-            var ex = missing[m];
-            var tn = "No tribe";
-            for (var t2 = 0; t2 < tribes.length; t2++) if (tribes[t2].id === ex.tribe_id) tn = tribes[t2].name;
-            mh += '<div class="row"><b>' + esc(ex.full_name || ex.email || "—") + '</b>' +
-              '<div class="meta">' + esc(ex.email || "") + " · " + esc(tn) + "</div></div>";
-          }
+          for (var m = 0; m < missing.length; m++) mh += '<div class="item"><b>' + esc(missing[m]) + '</b></div>';
           document.getElementById("missingBox").innerHTML = mh;
         }
-
-        if (!reports.length) {
+        var recent = reports.slice(0, 12);
+        if (!recent.length) {
           document.getElementById("recentBox").innerHTML = '<div class="meta">No reports yet.</div>';
         } else {
           var rh = "";
-          var maxr = Math.min(8, reports.length);
-          for (var ri = 0; ri < maxr; ri++) {
-            var rr = reports[ri];
-            var tn2 = "—";
-            for (var t3 = 0; t3 < tribes.length; t3++) if (tribes[t3].id === rr.tribe_id) tn2 = tribes[t3].name;
-            var when = rr.created_at ? new Date(rr.created_at).toLocaleString() : "—";
-            rh += '<div class="row"><b>' + esc(rr.title || "Untitled") + '</b>' +
-              '<div class="meta">Week ' + (rr.week_number == null ? "—" : rr.week_number) + " · " + esc(tn2) + " · " + esc(when) + "</div></div>";
+          for (var rr = 0; rr < recent.length; rr++) {
+            var row = recent[rr];
+            rh += '<div class="item">';
+            rh += "<b>" + esc(row.title || "Report") + "</b>";
+            rh += '<div class="meta">Week ' + esc(row.week_number) + " · " +
+              esc(hostelName[row.hostel_id] || "Hostel") + " · " +
+              esc(tribeName[row.tribe_id] || "Tribe") + "</div>";
+            if (row.duration || row.attendance) {
+              rh += '<div class="meta">' + esc(row.duration || "") +
+                (row.attendance != null ? " · Attendance: " + esc(row.attendance) : "") + "</div>";
+            }
+            if (row.comment || row.content) rh += '<div class="meta">' + esc(row.comment || row.content) + "</div>";
+            rh += "</div>";
           }
           document.getElementById("recentBox").innerHTML = rh;
         }
 
-        var hostelsByTribe = {};
-        for (var hi = 0; hi < hostels.length; hi++) {
-          var hid = hostels[hi].tribe_id || "_none";
-          if (!hostelsByTribe[hid]) hostelsByTribe[hid] = [];
-          hostelsByTribe[hid].push(hostels[hi].name);
-        }
         if (!execs.length) {
-          document.getElementById("execTableBox").innerHTML = '<div class="meta">No executives registered yet.</div>';
+          document.getElementById("execsBox").innerHTML = '<div class="meta">No executives registered.</div>';
         } else {
           var sorted = execs.slice().sort(function(a, b) {
-            var na = String(a.full_name || a.email || "").toLowerCase();
-            var nb = String(b.full_name || b.email || "").toLowerCase();
-            return na.localeCompare(nb);
+            return String(a.full_name || "").localeCompare(String(b.full_name || ""));
           });
-          var th = '<table class="execs"><thead><tr>' +
-            '<th>#</th><th>Name</th><th>Email</th><th>Tribe</th><th>Hostels</th></tr></thead><tbody>';
-          for (var ei = 0; ei < sorted.length; ei++) {
-            var exr = sorted[ei];
-            var tn3 = "—";
-            for (var t4 = 0; t4 < tribes.length; t4++) if (tribes[t4].id === exr.tribe_id) tn3 = tribes[t4].name;
-            var hs = hostelsByTribe[exr.tribe_id] || [];
-            var htxt = hs.length ? hs.join(", ") : "—";
-            th += '<tr>' +
-              '<td>' + (ei + 1) + '</td>' +
-              '<td><b>' + esc(exr.full_name || "—") + '</b></td>' +
-              '<td class="muted">' + esc(exr.email || "—") + '</td>' +
-              '<td>' + esc(tn3) + '</td>' +
-              '<td class="muted">' + esc(htxt) + '</td>' +
-              '</tr>';
+          var th = '<table class="execs"><thead><tr><th>#</th><th>Name</th><th>Tribe</th><th>Hostels</th></tr></thead><tbody>';
+          for (var x = 0; x < sorted.length; x++) {
+            var ex = sorted[x];
+            var tn = tribeName[ex.tribe_id] || "—";
+            var hs = (hostelsByTribe[ex.tribe_id] || []).join(", ") || "—";
+            th += "<tr><td>" + (x + 1) + "</td><td>" + esc(ex.full_name || "—") +
+              "</td><td>" + esc(tn) + "</td><td>" + esc(hs) + "</td></tr>";
           }
-          th += '</tbody></table>';
-          document.getElementById("execTableBox").innerHTML = th;
+          th += "</tbody></table>";
+          document.getElementById("execsBox").innerHTML = th;
         }
+      }).catch(function(e) {
+        show(hubError, e.message || String(e));
       });
     }
+    function openHub(pres) {
+      if (!gateOk()) {
+        applyGate();
+        return;
+      }
+      loginView.classList.add("hidden");
+      gateView.classList.add("hidden");
+      hubView.classList.remove("hidden");
+      return loadHub(pres);
+    }
+
+    document.getElementById("gateBtn").onclick = function() {
+      var code = (document.getElementById("secretCode").value || "").trim();
+      if (code !== PRESIDENT_SECRET) {
+        show(gateError, "Wrong secret code.");
+        return;
+      }
+      show(gateError, "");
+      unlockGate();
+    };
 
     document.getElementById("loginBtn").onclick = function() {
+      if (!gateOk()) {
+        show(loginError, "Enter secret code first.");
+        applyGate();
+        return;
+      }
       show(loginError, "");
       var email = document.getElementById("email").value.trim();
       var password = document.getElementById("password").value;
@@ -308,9 +313,7 @@
               throw new Error("This account is not an HPF President.");
             });
           }
-          loginView.classList.add("hidden");
-          hubView.classList.remove("hidden");
-          return loadHub(pres);
+          return openHub(pres);
         });
       }).catch(function(err) {
         show(loginError, err.message || String(err));
@@ -320,17 +323,23 @@
     document.getElementById("logoutBtn").onclick = function() {
       sb.auth.signOut().then(function() {
         hubView.classList.add("hidden");
-        loginView.classList.remove("hidden");
+        if (gateOk()) {
+          loginView.classList.remove("hidden");
+        } else {
+          applyGate();
+        }
       });
     };
 
+    applyGate();
     sb.auth.getSession().then(function(res) {
       if (!res.data.session) return;
+      if (!gateOk()) return;
       requirePresident(res.data.session.user.id).then(function(pres) {
         if (!pres) return;
-        loginView.classList.add("hidden");
-        hubView.classList.remove("hidden");
-        loadHub(pres).catch(function(e) { show(hubError, e.message || String(e)); });
+        openHub(pres);
+      }).catch(function(e) {
+        show(loginError, e.message || String(e));
       });
     });
   </script>
