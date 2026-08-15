@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>HPF Hostel Schedule</title>
+  <title>HPF Hostel Prayer Timetable</title>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <style>
     :root {
@@ -16,10 +16,10 @@
       font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;
       background:radial-gradient(1200px 600px at 50% -10%,#16301c 0%,var(--bg) 55%);
     }
-    .wrap{max-width:920px;margin:0 auto;padding:20px 12px 40px}
+    .wrap{max-width:960px;margin:0 auto;padding:20px 12px 40px}
     .logo{
-      width:44px;height:44px;border-radius:12px;background:var(--accent);color:#111;
-      display:grid;place-items:center;font-weight:800;font-size:20px;margin:0 auto 8px
+      width:56px;height:56px;border-radius:14px;object-fit:cover;display:block;
+      margin:0 auto 12px;border:2px solid var(--accent);background:#0e1511;
     }
     .pill{text-align:center;color:var(--accent);font-size:12px;letter-spacing:.12em;font-weight:700;margin:0 0 6px}
     h1{text-align:center;margin:0 0 6px;font-size:24px}
@@ -50,15 +50,16 @@
     .links a{color:#111;background:var(--accent);text-decoration:none;font-weight:700;padding:8px 12px;border-radius:999px;font-size:13px}
     .grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
     @media(max-width:560px){.grid2{grid-template-columns:1fr}}
+    .form-title{font-weight:700;margin-bottom:4px}
   </style>
 </head>
 <body>
   <div class="wrap">
     <div id="loginView">
-      <div class="logo">✦</div>
-      <p class="pill">HPF ADMIN</p>
-      <h1>Hostel Schedule</h1>
-      <p class="sub">Plan tribe hostel fellowships by week, day and time</p>
+      <img class="logo" src="./hpf-logo.jpg" alt="HPF Logo" />
+      <p class="pill">HPF SCHEDULE</p>
+      <h1>Hostel Prayer Timetable</h1>
+      <p class="sub">Days, times, hostels and coordinators</p>
       <div class="card">
         <label>Email</label>
         <input id="email" type="email" />
@@ -70,24 +71,27 @@
     </div>
 
     <div id="appView" class="hidden">
-      <div class="logo">✦</div>
-      <p class="pill">HPF ADMIN</p>
+      <img class="logo" src="./hpf-logo.jpg" alt="HPF Logo" />
+      <p class="pill">HPF SCHEDULE</p>
       <div class="top">
-        <h1>Week Planner</h1>
+        <h1>Prayer Timetable</h1>
         <button class="ghost" id="logoutBtn" type="button">Sign out</button>
       </div>
       <div class="links">
+        <a href="./president.html">President Hub</a>
         <a href="./admin-dashboard.html">Dashboard</a>
         <a href="./admin-manage.html">Manage</a>
         <a href="./admin-export.html">Export</a>
       </div>
 
       <div class="card">
-        <div style="font-weight:700;margin-bottom:8px">Add fellowship slot</div>
+        <div class="form-title" id="formTitle">Add hostel prayer slot</div>
+        <p class="meta" id="formHint">Add as many rows as you want. Same hostel can meet many days.</p>
+        <input type="hidden" id="editId" value="" />
         <div class="grid2">
           <div>
-            <label>Week number</label>
-            <input id="weekNumber" type="number" min="1" max="53" placeholder="e.g. 12" />
+            <label>Week number (optional)</label>
+            <input id="weekNumber" type="number" min="1" max="53" placeholder="e.g. 12 or leave empty" />
           </div>
           <div>
             <label>Day</label>
@@ -102,22 +106,27 @@
             </select>
           </div>
         </div>
-        <label>Time</label>
+        <label>Time of prayer</label>
         <input id="meetingTime" type="text" placeholder="e.g. 7:00 PM" />
         <label>Tribe</label>
         <select id="tribeSelect"></select>
         <label>Hostel</label>
         <select id="hostelSelect"></select>
+        <label>Hostel coordinator</label>
+        <input id="coordinator" type="text" placeholder="Name of person in charge" />
         <label>Notes (optional)</label>
         <textarea id="notes" rows="2" placeholder="e.g. Hostel prayer / Bible study"></textarea>
-        <button class="primary" id="addBtn" type="button">Add to schedule</button>
+        <button class="primary" id="saveBtn" type="button">Save slot</button>
+        <button class="ghost" id="cancelEditBtn" type="button">Cancel edit</button>
         <div class="error" id="msgError"></div>
         <div class="ok" id="msgOk"></div>
       </div>
 
       <div class="card">
         <label>Filter by week (optional)</label>
-        <input id="filterWeek" type="number" min="1" max="53" placeholder="Leave empty = all weeks" />
+        <input id="filterWeek" type="number" min="1" max="53" placeholder="Leave empty = all" />
+        <label>Filter by hostel name (optional)</label>
+        <input id="filterHostel" type="text" placeholder="Type hostel name" />
         <div id="list" style="margin-top:12px"></div>
       </div>
     </div>
@@ -146,12 +155,15 @@
         .replace(/&/g, "&amp;").replace(/</g, "&lt;")
         .replace(/>/g, "&gt;").replace(/"/g, "&quot;");
     }
-    function requireAdmin(uid) {
-      return sb.from("admin_accounts").select("id").eq("id", uid).maybeSingle()
-        .then(function(res) {
-          if (res.error) throw res.error;
-          return !!res.data;
-        });
+    function canAccess(uid) {
+      return Promise.all([
+        sb.from("admin_accounts").select("id").eq("id", uid).maybeSingle(),
+        sb.from("president_accounts").select("id").eq("id", uid).maybeSingle()
+      ]).then(function(res) {
+        if (res[0].error) throw res[0].error;
+        if (res[1].error) throw res[1].error;
+        return !!(res[0].data || res[1].data);
+      });
     }
     function tribeName(id) {
       for (var i = 0; i < tribes.length; i++) if (tribes[i].id === id) return tribes[i].name;
@@ -160,6 +172,10 @@
     function hostelName(id) {
       for (var i = 0; i < hostels.length; i++) if (hostels[i].id === id) return hostels[i].name;
       return "—";
+    }
+    function dayOrder(d) {
+      var map = {Monday:1,Tuesday:2,Wednesday:3,Thursday:4,Friday:5,Saturday:6,Sunday:7};
+      return map[d] || 99;
     }
     function fillTribes() {
       var sel = document.getElementById("tribeSelect");
@@ -180,14 +196,27 @@
       }
       sel.innerHTML = html || '<option value="">No hostels for tribe</option>';
     }
-    function dayOrder(d) {
-      var map = {Monday:1,Tuesday:2,Wednesday:3,Thursday:4,Friday:5,Saturday:6,Sunday:7};
-      return map[d] || 99;
-    }function renderList() {
+    function resetForm() {
+      document.getElementById("editId").value = "";
+      document.getElementById("formTitle").textContent = "Add hostel prayer slot";
+      document.getElementById("formHint").textContent = "Add as many rows as you want. Same hostel can meet many days.";
+      document.getElementById("weekNumber").value = "";
+      document.getElementById("meetingTime").value = "";
+      document.getElementById("coordinator").value = "";
+      document.getElementById("notes").value = "";
+      document.getElementById("dayOfWeek").value = "Monday";
+    }
+    function renderList() {
       var week = document.getElementById("filterWeek").value;
+      var hostelQ = document.getElementById("filterHostel").value.trim().toLowerCase();
       var rows = schedules.slice();
       if (week) {
         rows = rows.filter(function(s) { return String(s.week_number) === String(week); });
+      }
+      if (hostelQ) {
+        rows = rows.filter(function(s) {
+          return String(hostelName(s.hostel_id)).toLowerCase().indexOf(hostelQ) !== -1;
+        });
       }
       rows.sort(function(a, b) {
         if (a.week_number !== b.week_number) return (a.week_number || 0) - (b.week_number || 0);
@@ -196,30 +225,56 @@
         return String(hostelName(a.hostel_id)).localeCompare(String(hostelName(b.hostel_id)));
       });
       if (!rows.length) {
-        document.getElementById("list").innerHTML = '<div class="meta">No schedules yet. Add slots above (a hostel can have 3 days in one week).</div>';
+        document.getElementById("list").innerHTML = '<div class="meta">No timetable rows yet. Add hostels above (unlimited).</div>';
         return;
       }
       var html = "";
       for (var i = 0; i < rows.length; i++) {
         var s = rows[i];
         html += '<div class="item" data-id="' + s.id + '">';
-        html += "<b>Week " + (s.week_number == null ? "—" : s.week_number) + " · " + esc(s.day_of_week || "—") + " · " + esc(s.meeting_time || "—") + "</b>";
-        html += '<div class="meta">' + esc(tribeName(s.tribe_id)) + " → " + esc(hostelName(s.hostel_id)) + "</div>";
-        if (s.notes) html += '<div class="meta">' + esc(s.notes) + "</div>";
-        html += '<div class="row-btns"><button class="danger del-btn" type="button">Delete</button></div>';
+        html += "<b>" + esc(hostelName(s.hostel_id)) + "</b>";
+        html += '<div class="meta">' + esc(s.day_of_week || "—") + " · " + esc(s.meeting_time || "—");
+        if (s.week_number != null) html += " · Week " + s.week_number;
         html += "</div>";
+        html += '<div class="meta">Tribe: ' + esc(tribeName(s.tribe_id)) + "</div>";
+        html += '<div class="meta">Coordinator: ' + esc(s.coordinator || "—") + "</div>";
+        if (s.notes) html += '<div class="meta">' + esc(s.notes) + "</div>";
+        html += '<div class="row-btns">';
+        html += '<button class="primary edit-btn" type="button">Edit</button>';
+        html += '<button class="danger del-btn" type="button">Delete</button>';
+        html += "</div></div>";
       }
       document.getElementById("list").innerHTML = html;
       var items = document.querySelectorAll("#list .item");
       for (var j = 0; j < items.length; j++) {
         (function(item) {
           var id = item.getAttribute("data-id");
+          item.querySelector(".edit-btn").onclick = function() {
+            var row = null;
+            for (var k = 0; k < schedules.length; k++) if (schedules[k].id === id) row = schedules[k];
+            if (!row) return;
+            document.getElementById("editId").value = row.id;
+            document.getElementById("formTitle").textContent = "Edit hostel prayer slot";
+            document.getElementById("formHint").textContent = "Change details then tap Save slot.";
+            document.getElementById("weekNumber").value = row.week_number == null ? "" : row.week_number;
+            document.getElementById("dayOfWeek").value = row.day_of_week || "Monday";
+            document.getElementById("meetingTime").value = row.meeting_time || "";
+            document.getElementById("coordinator").value = row.coordinator || "";
+            document.getElementById("notes").value = row.notes || "";
+            document.getElementById("tribeSelect").value = row.tribe_id || "";
+            fillHostels();
+            document.getElementById("hostelSelect").value = row.hostel_id || "";
+            show(msgOk, "Editing this row. Save when ready.");
+            show(msgError, "");
+            window.scrollTo(0, 0);
+          };
           item.querySelector(".del-btn").onclick = function() {
-            if (!confirm("Delete this schedule slot?")) return;
+            if (!confirm("Delete this timetable row?")) return;
             show(msgError, ""); show(msgOk, "");
             sb.from("hostel_schedules").delete().eq("id", id).then(function(res) {
               if (res.error) return show(msgError, res.error.message);
               show(msgOk, "Deleted.");
+              if (document.getElementById("editId").value === id) resetForm();
               return loadAll();
             });
           };
@@ -246,31 +301,50 @@
 
     document.getElementById("tribeSelect").onchange = fillHostels;
     document.getElementById("filterWeek").oninput = renderList;
+    document.getElementById("filterHostel").oninput = renderList;
+    document.getElementById("cancelEditBtn").onclick = function() {
+      resetForm();
+      show(msgOk, "Edit cancelled.");
+      show(msgError, "");
+    };
 
-    document.getElementById("addBtn").onclick = function() {
+    document.getElementById("saveBtn").onclick = function() {
       show(msgError, ""); show(msgOk, "");
-      var week = Number(document.getElementById("weekNumber").value);
+      var editId = document.getElementById("editId").value;
+      var weekVal = document.getElementById("weekNumber").value;
+      var week = weekVal === "" ? null : Number(weekVal);
       var day = document.getElementById("dayOfWeek").value;
       var time = document.getElementById("meetingTime").value.trim();
       var tribe_id = document.getElementById("tribeSelect").value;
       var hostel_id = document.getElementById("hostelSelect").value;
+      var coordinator = document.getElementById("coordinator").value.trim() || null;
       var notes = document.getElementById("notes").value.trim() || null;
-      if (!week) return show(msgError, "Enter week number.");
       if (!day) return show(msgError, "Select a day.");
-      if (!time) return show(msgError, "Enter time.");
+      if (!time) return show(msgError, "Enter prayer time.");
       if (!tribe_id) return show(msgError, "Select a tribe.");
       if (!hostel_id) return show(msgError, "Select a hostel.");
-      sb.from("hostel_schedules").insert({
+      if (!coordinator) return show(msgError, "Enter hostel coordinator name.");
+
+      var payload = {
         week_number: week,
         day_of_week: day,
         meeting_time: time,
         tribe_id: tribe_id,
         hostel_id: hostel_id,
+        coordinator: coordinator,
         notes: notes
-      }).then(function(res) {
+      };
+
+      var req;
+      if (editId) {
+        req = sb.from("hostel_schedules").update(payload).eq("id", editId);
+      } else {
+        req = sb.from("hostel_schedules").insert(payload);
+      }
+      req.then(function(res) {
         if (res.error) return show(msgError, res.error.message);
-        show(msgOk, "Schedule slot added. Add more days for the same hostel if needed.");
-        document.getElementById("notes").value = "";
+        show(msgOk, editId ? "Updated." : "Saved. Add more hostels or more days anytime.");
+        resetForm();
         return loadAll();
       });
     };
@@ -281,10 +355,10 @@
       var password = document.getElementById("password").value;
       sb.auth.signInWithPassword({ email: email, password: password }).then(function(res) {
         if (res.error) throw res.error;
-        return requireAdmin(res.data.user.id).then(function(ok) {
+        return canAccess(res.data.user.id).then(function(ok) {
           if (!ok) {
             return sb.auth.signOut().then(function() {
-              throw new Error("This account is not an HPF Admin.");
+              throw new Error("Only HPF Admin or President can open the timetable.");
             });
           }
           loginView.classList.add("hidden");
@@ -305,7 +379,7 @@
 
     sb.auth.getSession().then(function(res) {
       if (!res.data.session) return;
-      requireAdmin(res.data.session.user.id).then(function(ok) {
+      canAccess(res.data.session.user.id).then(function(ok) {
         if (!ok) return;
         loginView.classList.add("hidden");
         appView.classList.remove("hidden");
