@@ -89,9 +89,15 @@
       <div class="banner" id="roleBanner">Loading...</div>
 
       <div class="card">
-        <label>Month (for totals + export)</label>
-        <input id="filterMonth" type="month" />
-        <p class="meta" style="margin-top:8px">Leave empty = all months. Use month for month-end PDF / Excel.</p>
+        <label>From month</label>
+        <input id="filterFrom" type="month" />
+        <label>To month</label>
+        <input id="filterTo" type="month" />
+        <p class="meta" style="margin-top:8px">Leave both empty = all time. Example: From Jan 2026 → To Mar 2026 = 3 months in one PDF.</p>
+        <div class="row-btns">
+          <button class="ghost" id="last3Btn" type="button" style="margin-top:0">Last 3 months</button>
+          <button class="ghost" id="clearRangeBtn" type="button" style="margin-top:0">All time</button>
+        </div>
         <div class="row-btns">
           <button class="primary" id="exportPdfBtn" type="button" style="margin-top:0">Download PDF</button>
           <button class="primary" id="exportCsvBtn" type="button" style="margin-top:0">Download Excel (CSV)</button>
@@ -166,8 +172,8 @@
       <div class="error" id="msgError"></div>
       <div class="ok" id="msgOk"></div>
     </div>
-  </div>
-  <script>
+            </div>
+            <script>
     var SUPABASE_URL = "https://pexepaclinlqcwjuzhen.supabase.co";
     var SUPABASE_KEY = "sb_publishable_U7WdBF49bn0x0cJ8t3s2WQ_5w4mnty5";
     var sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
@@ -211,18 +217,49 @@
       if (!dateStr) return "";
       return String(dateStr).slice(0, 7);
     }
-    function filterMonth() {
-      return document.getElementById("filterMonth").value || "";
+    function addMonths(ym, delta) {
+      var p = String(ym).split("-");
+      var y = Number(p[0]), m = Number(p[1]) - 1 + delta;
+      while (m < 0) { m += 12; y -= 1; }
+      while (m > 11) { m -= 12; y += 1; }
+      return y + "-" + String(m + 1).padStart(2, "0");
+    }
+    function rangeLabel() {
+      var from = document.getElementById("filterFrom").value || "";
+      var to = document.getElementById("filterTo").value || "";
+      if (!from && !to) return "all";
+      if (from && to) return from + "_to_" + to;
+      if (from) return "from_" + from;
+      return "to_" + to;
+    }
+    function rangeText() {
+      var from = document.getElementById("filterFrom").value || "";
+      var to = document.getElementById("filterTo").value || "";
+      if (!from && !to) return "All time";
+      if (from && to) return from + " to " + to;
+      if (from) return "From " + from;
+      return "Until " + to;
+    }
+    function inRange(dateStr) {
+      var ym = monthOf(dateStr);
+      if (!ym) return false;
+      var from = document.getElementById("filterFrom").value || "";
+      var to = document.getElementById("filterTo").value || "";
+      if (from && ym < from) return false;
+      if (to && ym > to) return false;
+      return true;
     }
     function filteredIncome() {
-      var m = filterMonth();
-      if (!m) return incomes.slice();
-      return incomes.filter(function(r) { return monthOf(r.txn_date) === m; });
+      var from = document.getElementById("filterFrom").value || "";
+      var to = document.getElementById("filterTo").value || "";
+      if (!from && !to) return incomes.slice();
+      return incomes.filter(function(r) { return inRange(r.txn_date); });
     }
     function filteredExpense() {
-      var m = filterMonth();
-      if (!m) return expenses.slice();
-      return expenses.filter(function(r) { return monthOf(r.txn_date) === m; });
+      var from = document.getElementById("filterFrom").value || "";
+      var to = document.getElementById("filterTo").value || "";
+      if (!from && !to) return expenses.slice();
+      return expenses.filter(function(r) { return inRange(r.txn_date); });
     }
     function resolveRole(uid) {
       return Promise.all([
@@ -248,7 +285,7 @@
       for (var i = 0; i < incRows.length; i++) inc += Number(incRows[i].amount) || 0;
       for (var j = 0; j < expRows.length; j++) exp += Number(expRows[j].amount) || 0;
       var bal = inc - exp;
-      var label = filterMonth() ? ("Month " + filterMonth()) : "All time";
+      var label = rangeText();
       document.getElementById("stats").innerHTML =
         '<div class="stat"><div class="n">' + money(inc) + '</div><div class="l">Income (' + label + ')</div></div>' +
         '<div class="stat"><div class="n">' + money(exp) + '</div><div class="l">Expenses (' + label + ')</div></div>' +
@@ -384,8 +421,10 @@
       var label = info.role === "officer" ? "Account Officer (can edit)" : "President (view only)";
       document.getElementById("roleBanner").textContent =
         label + " · " + (info.profile.full_name || info.profile.email || "");
-      if (!document.getElementById("filterMonth").value) {
-        document.getElementById("filterMonth").value = currentMonthValue();
+      if (!document.getElementById("filterFrom").value && !document.getElementById("filterTo").value) {
+        var cur = currentMonthValue();
+        document.getElementById("filterFrom").value = cur;
+        document.getElementById("filterTo").value = cur;
       }
       if (!document.getElementById("incomeDate").value) document.getElementById("incomeDate").value = todayISO();
       if (!document.getElementById("expenseDate").value) document.getElementById("expenseDate").value = todayISO();
@@ -399,13 +438,13 @@
     }
     function downloadCSV() {
       show(msgError, "");
-      var m = filterMonth() || "all";
+      var m = rangeLabel();
       var incRows = filteredIncome();
       var expRows = filteredExpense();
       if (!incRows.length && !expRows.length) return show(msgError, "No records to export for this month.");
       var lines = [];
       lines.push("HPF Accounts Export");
-      lines.push("Month," + csvEscape(m));
+      lines.push("Period," + csvEscape(rangeText()));
       lines.push("");
       lines.push("INCOME");
       lines.push("Date,Type,Amount,From,Notes");
@@ -446,9 +485,10 @@
       a.download = "HPF-Accounts-" + m + ".csv";
       a.click();
       show(msgOk, "CSV downloaded.");
-    }function downloadPDF() {
+              }
+              function downloadPDF() {
       show(msgError, "");
-      var m = filterMonth() || "all";
+      var m = rangeLabel();
       var incRows = filteredIncome().sort(function(a, b) {
         return String(a.txn_date || "").localeCompare(String(b.txn_date || ""));
       });
@@ -466,7 +506,7 @@
       doc.setFontSize(16);
       doc.text("HPF Accounts — Month-end Report", 14, 16);
       doc.setFontSize(11);
-      doc.text("Month: " + m, 14, 24);
+      doc.text("Period: " + rangeText(), 14, 24);
       doc.text("Generated: " + new Date().toLocaleString(), 14, 30);
       doc.text("Income: " + money(incTotal) + "   Expenses: " + money(expTotal) + "   Balance: " + money(bal), 14, 36);
 
@@ -525,9 +565,23 @@
       show(msgOk, "PDF downloaded.");
     }
 
-    document.getElementById("filterMonth").onchange = refreshView;
+    document.getElementById("filterFrom").onchange = refreshView;
+    document.getElementById("filterTo").onchange = refreshView;
     document.getElementById("exportPdfBtn").onclick = downloadPDF;
     document.getElementById("exportCsvBtn").onclick = downloadCSV;
+    document.getElementById("last3Btn").onclick = function() {
+      var cur = currentMonthValue();
+      document.getElementById("filterTo").value = cur;
+      document.getElementById("filterFrom").value = addMonths(cur, -2);
+      refreshView();
+      show(msgOk, "Showing last 3 months.");
+    };
+    document.getElementById("clearRangeBtn").onclick = function() {
+      document.getElementById("filterFrom").value = "";
+      document.getElementById("filterTo").value = "";
+      refreshView();
+      show(msgOk, "Showing all time.");
+    };
 
     document.querySelectorAll(".tab").forEach(function(btn) {
       btn.onclick = function() {
