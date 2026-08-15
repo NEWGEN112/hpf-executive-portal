@@ -1,1 +1,247 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>HPF Portal</title>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <style>
+    :root {
+      --bg:#0b0f0c; --card:#121a14; --line:#1e2a22; --text:#e8f0ea;
+      --muted:#8fa396; --accent:#c8f54a; --input:#0e1511;
+    }
+    *{box-sizing:border-box}
+    body{
+      margin:0;min-height:100vh;color:var(--text);
+      font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;
+      background:radial-gradient(1200px 600px at 50% -10%,#16301c 0%,var(--bg) 55%);
+    }
+    .wrap{max-width:920px;margin:0 auto;padding:20px 12px 40px}
+    .logo{
+      width:64px;height:64px;border-radius:16px;object-fit:cover;display:block;
+      margin:0 auto 12px;border:2px solid var(--accent);background:#0e1511;
+    }
+    .pill{text-align:center;color:var(--accent);font-size:12px;letter-spacing:.14em;font-weight:700;margin:0 0 6px}
+    h1{text-align:center;margin:0 0 6px;font-size:26px}
+    .sub{text-align:center;color:var(--muted);margin:0 0 16px;font-size:14px}
+    .card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px;margin-bottom:12px}
+    label{display:block;font-size:13px;color:var(--muted);margin:10px 0 6px}
+    input,select{
+      width:100%;background:var(--input);border:1px solid var(--line);border-radius:10px;
+      padding:11px 12px;color:var(--text);font-size:15px;outline:none
+    }
+    button{border:0;border-radius:10px;padding:11px 14px;font-size:14px;font-weight:700;cursor:pointer}
+    .primary{background:var(--accent);color:#111;width:100%;margin-top:12px}
+    .ghost{background:transparent;color:var(--muted)}
+    .error{display:none;margin-top:10px;border-radius:10px;padding:10px;font-size:14px;background:#3a1515;color:#ffb4b4;border:1px solid #5c2424}
+    .error.show{display:block}
+    .hidden{display:none!important}
+    .top{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:12px;flex-wrap:wrap}
+    .top h1{margin:0;font-size:22px;text-align:left}
+    .banner{background:#1a2a1e;border:1px solid #2f4a36;border-radius:12px;padding:10px 12px;margin-bottom:12px;font-size:14px}
+    .grid{display:grid;grid-template-columns:1fr;gap:8px}
+    @media(min-width:640px){.grid{grid-template-columns:1fr 1fr}}
+    .tool{
+      display:block;text-decoration:none;color:#111;background:var(--accent);
+      font-weight:700;padding:16px;border-radius:12px;text-align:center
+    }
+    .tool.secondary{
+      background:#1a2a1e;color:var(--accent);border:1px solid #2f4a36
+    }
+    .tool .t{font-size:15px}
+    .tool .d{font-size:12px;font-weight:500;opacity:.85;margin-top:4px}
+    .section-title{margin:4px 0 10px;font-size:16px;font-weight:700}
+    .role-note{color:var(--muted);font-size:13px;margin-bottom:10px}
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div id="loginView">
+      <img class="logo" src="./hpf-logo.jpg" alt="HPF Logo" />
+      <p class="pill">HOSTEL PRAYER FELLOWSHIP</p>
+      <h1>HPF Portal</h1>
+      <p class="sub">One login for every role</p>
+      <div class="card">
+        <label>Email</label>
+        <input id="email" type="email" autocomplete="username" />
+        <label>Password</label>
+        <input id="password" type="password" autocomplete="current-password" />
+        <button class="primary" id="loginBtn" type="button">Sign in</button>
+        <div class="error" id="loginError"></div>
+      </div>
+      <p class="sub">Works for Executive · Admin · President · Account Officer</p>
+    </div>
 
+    <div id="homeView" class="hidden">
+      <img class="logo" src="./hpf-logo.jpg" alt="HPF Logo" />
+      <p class="pill">HPF PORTAL</p>
+      <div class="top">
+        <h1 id="homeTitle">Home</h1>
+        <button class="ghost" id="logoutBtn" type="button">Sign out</button>
+      </div>
+      <div class="banner" id="welcomeBanner">Welcome</div>
+      <div id="toolsBox"></div>
+      <div class="error" id="homeError"></div>
+    </div>
+    </div>
+  <script>
+    var SUPABASE_URL = "https://pexepaclinlqcwjuzhen.supabase.co";
+    var SUPABASE_KEY = "sb_publishable_U7WdBF49bn0x0cJ8t3s2WQ_5w4mnty5";
+    var sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+    var loginView = document.getElementById("loginView");
+    var homeView = document.getElementById("homeView");
+    var loginError = document.getElementById("loginError");
+    var homeError = document.getElementById("homeError");
+
+    function show(el, msg) {
+      el.textContent = msg || "";
+      if (msg) el.classList.add("show"); else el.classList.remove("show");
+    }
+    function esc(s) {
+      return String(s == null ? "" : s)
+        .replace(/&/g, "&amp;").replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+    }
+    function tool(href, title, desc, secondary) {
+      return '<a class="tool' + (secondary ? " secondary" : "") + '" href="' + href + '">' +
+        '<div class="t">' + esc(title) + '</div>' +
+        (desc ? '<div class="d">' + esc(desc) + "</div>" : "") +
+        "</a>";
+    }
+    function resolveRoles(uid) {
+      return Promise.all([
+        sb.from("executive_accounts").select("id, full_name, tribe_id").eq("id", uid).maybeSingle(),
+        sb.from("admin_accounts").select("id, full_name").eq("id", uid).maybeSingle(),
+        sb.from("president_accounts").select("id, full_name").eq("id", uid).maybeSingle(),
+        sb.from("account_officer_accounts").select("id, full_name").eq("id", uid).maybeSingle()
+      ]).then(function(res) {
+        for (var i = 0; i < res.length; i++) if (res[i].error) throw res[i].error;
+        var roles = [];
+        if (res[0].data) roles.push({ key: "executive", profile: res[0].data });
+        if (res[1].data) roles.push({ key: "admin", profile: res[1].data });
+        if (res[2].data) roles.push({ key: "president", profile: res[2].data });
+        if (res[3].data) roles.push({ key: "officer", profile: res[3].data });
+        return roles;
+      });
+    }
+    function primaryRole(roles) {
+      var order = ["president", "admin", "officer", "executive"];
+      for (var i = 0; i < order.length; i++) {
+        for (var j = 0; j < roles.length; j++) if (roles[j].key === order[i]) return roles[j];
+      }
+      return null;
+    }
+    function roleLabel(key) {
+      if (key === "president") return "President";
+      if (key === "admin") return "Admin";
+      if (key === "officer") return "Account Officer";
+      if (key === "executive") return "Executive";
+      return key;
+    }
+    function renderHome(roles) {
+      var main = primaryRole(roles);
+      if (!main) {
+        show(homeError, "No HPF role found for this account.");
+        return;
+      }
+      var name = main.profile.full_name || main.profile.email || "User";
+      var allLabels = roles.map(function(r) { return roleLabel(r.key); }).join(" · ");
+      document.getElementById("homeTitle").textContent = roleLabel(main.key) + " Home";
+      document.getElementById("welcomeBanner").textContent =
+        "Signed in as " + name + " · Access: " + allLabels;
+
+      var html = "";
+      var keys = {};
+      for (var i = 0; i < roles.length; i++) keys[roles[i].key] = true;
+
+      if (keys.president) {
+        html += '<div class="card"><div class="section-title">President</div>';
+        html += '<p class="role-note">Full overview and every admin tool</p><div class="grid">';
+        html += tool("./president.html", "President Hub", "Stats, missing reports, executives table");
+        html += tool("./admin-dashboard.html", "Summary Dashboard", "Numbers at a glance");
+        html += tool("./admin-reports.html", "Full Reports", "All executive weekly reports");
+        html += tool("./admin-export.html", "Export PDF / Excel", "Month-end downloads");
+        html += tool("./admin-manage.html", "Manage Tribes & Hostels", "People and structure");
+        html += tool("./admin-schedule.html", "Hostel Prayer Timetable", "Days, times, coordinators");
+        html += tool("./admin-semesters.html", "Semesters", "Close semester & start new");
+        html += tool("./accounts.html", "Accounts (view)", "Income & expense overview", true);
+        html += "</div></div>";
+      }
+
+      if (keys.admin && !keys.president) {
+        html += '<div class="card"><div class="section-title">Admin</div>';
+        html += '<p class="role-note">Manage HPF operations</p><div class="grid">';
+        html += tool("./admin-dashboard.html", "Summary Dashboard", "Numbers at a glance");
+        html += tool("./admin-manage.html", "Manage Tribes & Hostels", "People and structure");
+        html += tool("./admin-reports.html", "Full Reports", "All executive weekly reports");
+        html += tool("./admin-export.html", "Export PDF / Excel", "Month-end downloads");
+        html += tool("./admin-schedule.html", "Hostel Prayer Timetable", "Days, times, coordinators");
+        html += tool("./admin-semesters.html", "Semesters", "Close semester & start new");
+        html += tool("./accounts.html", "Accounts (view)", "Income & expense overview", true);
+        html += "</div></div>";
+      }
+
+      if (keys.officer) {
+        html += '<div class="card"><div class="section-title">Account Officer</div>';
+        html += '<p class="role-note">Money records and downloads</p><div class="grid">';
+        html += tool("./accounts.html", "Accounts Portal", "Income, expense, balance, multi-month PDF/CSV");
+        html += "</div></div>";
+      }
+
+      if (keys.executive) {
+        html += '<div class="card"><div class="section-title">Executive</div>';
+        html += '<p class="role-note">Reports and schedule for your tribe</p><div class="grid">';
+        html += tool("./index.html", "Executive Portal", "Submit weekly reports");
+        html += tool("./executive-schedule.html", "My Schedule", "Hostel prayer times");
+        html += "</div></div>";
+      }
+
+      if (!html) html = '<div class="card"><div class="role-note">No tools for this role yet.</div></div>';
+      document.getElementById("toolsBox").innerHTML = html;
+    }
+    function openHome(roles) {
+      show(homeError, "");
+      loginView.classList.add("hidden");
+      homeView.classList.remove("hidden");
+      renderHome(roles);
+    }
+
+    document.getElementById("loginBtn").onclick = function() {
+      show(loginError, "");
+      var email = document.getElementById("email").value.trim();
+      var password = document.getElementById("password").value;
+      sb.auth.signInWithPassword({ email: email, password: password }).then(function(res) {
+        if (res.error) throw res.error;
+        return resolveRoles(res.data.user.id).then(function(roles) {
+          if (!roles.length) {
+            return sb.auth.signOut().then(function() {
+              throw new Error("This account is not registered as HPF Executive, Admin, President, or Account Officer.");
+            });
+          }
+          openHome(roles);
+        });
+      }).catch(function(err) {
+        show(loginError, err.message || String(err));
+      });
+    };
+
+    document.getElementById("logoutBtn").onclick = function() {
+      sb.auth.signOut().then(function() {
+        homeView.classList.add("hidden");
+        loginView.classList.remove("hidden");
+      });
+    };
+
+    sb.auth.getSession().then(function(res) {
+      if (!res.data.session) return;
+      resolveRoles(res.data.session.user.id).then(function(roles) {
+        if (!roles.length) return;
+        openHome(roles);
+      }).catch(function(e) {
+        show(loginError, e.message || String(e));
+      });
+    });
+  </script>
+</body>
+  </html>
