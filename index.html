@@ -305,6 +305,15 @@
       if (!comment) return showError(dashError, "Enter comment.");
       if (!week) return showError(dashError, "Enter week number.");
 
+      const { data: activeSem, error: semErr } = await sb
+        .from("semesters")
+        .select("id, name")
+        .eq("is_active", true)
+        .maybeSingle();
+
+      if (semErr) return showError(dashError, semErr.message);
+      if (!activeSem) return showError(dashError, "No active semester. Ask admin to open a semester first.");
+
       const { error } = await sb.from("weekly_reports").insert({
         tribe_id: currentExec.tribe_id,
         hostel_id: hostelId,
@@ -314,9 +323,9 @@
         duration: duration,
         attendance: attendance,
         comment: comment,
-        content: comment
+        content: comment,
+        semester_id: activeSem.id
       });
-
       if (error) showError(dashError, error.message);
       else {
         showOk(dashOk, "Report submitted. Admin can see it now.");
