@@ -101,309 +101,333 @@
       <div id="panel-executives" class="hidden"></div>
       <div id="panel-reports" class="hidden"></div>
     </div>
-        </div>
+  </div>
   <script>
-    const SUPABASE_URL = "https://pexepaclinlqcwjuzhen.supabase.co";
-    const SUPABASE_KEY = "sb_publishable_U7WdBF49bn0x0cJ8t3s2WQ_5w4mnty5";
-    const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+    var SUPABASE_URL = "https://pexepaclinlqcwjuzhen.supabase.co";
+    var SUPABASE_KEY = "sb_publishable_U7WdBF49bn0x0cJ8t3s2WQ_5w4mnty5";
+    var sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-    const loginView = document.getElementById("loginView");
-    const appView = document.getElementById("appView");
-    const loginError = document.getElementById("loginError");
-    const msgError = document.getElementById("msgError");
-    const msgOk = document.getElementById("msgOk");
+    var loginView = document.getElementById("loginView");
+    var appView = document.getElementById("appView");
+    var loginError = document.getElementById("loginError");
+    var msgError = document.getElementById("msgError");
+    var msgOk = document.getElementById("msgOk");
 
-    let tribes = [];
-    let hostels = [];
-    let executives = [];
-    let reports = [];
+    var tribes = [];
+    var hostels = [];
+    var executives = [];
+    var reports = [];
 
     function show(el, msg) {
       el.textContent = msg || "";
-      el.classList.toggle("show", !!msg);
+      if (msg) el.classList.add("show"); else el.classList.remove("show");
     }
     function clearMsg() { show(msgError, ""); show(msgOk, ""); }
     function esc(s) {
-      return String(s ?? "")
-        .replaceAll("&", "&amp;").replaceAll("<", "&lt;")
-        .replaceAll(">", "&gt;").replaceAll('"', "&quot;");
+      return String(s == null ? "" : s)
+        .replace(/&/g, "&amp;").replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;").replace(/"/g, "&quot;");
     }
-
-    async function requireAdmin(uid) {
-      const { data, error } = await sb.from("admin_accounts").select("id").eq("id", uid).maybeSingle();
-      if (error) throw error;
-      return !!data;
+    function requireAdmin(uid) {
+      return sb.from("admin_accounts").select("id").eq("id", uid).maybeSingle()
+        .then(function(res) {
+          if (res.error) throw res.error;
+          return !!res.data;
+        });
     }
-
-    async function loadAll() {
+    function tribeName(id) {
+      for (var i = 0; i < tribes.length; i++) if (tribes[i].id === id) return tribes[i].name;
+      return "—";
+    }
+    function loadAll() {
       clearMsg();
-      const [t, h, e, r] = await Promise.all([
+      return Promise.all([
         sb.from("tribes").select("*").order("name"),
         sb.from("hostels").select("*").order("name"),
         sb.from("executive_accounts").select("*").order("full_name"),
         sb.from("weekly_reports").select("*").order("created_at", { ascending: false })
-      ]);
-      if (t.error) throw t.error;
-      if (h.error) throw h.error;
-      if (e.error) throw e.error;
-      if (r.error) throw r.error;
-      tribes = t.data || [];
-      hostels = h.data || [];
-      executives = e.data || [];
-      reports = r.data || [];
-      renderTribes();
-      renderHostels();
-      renderExecutives();
-      renderReports();
-    }
-
-    function tribeName(id) {
-      const t = tribes.find(x => x.id === id);
-      return t ? t.name : "—";
+      ]).then(function(results) {
+        if (results[0].error) throw results[0].error;
+        if (results[1].error) throw results[1].error;
+        if (results[2].error) throw results[2].error;
+        if (results[3].error) throw results[3].error;
+        tribes = results[0].data || [];
+        hostels = results[1].data || [];
+        executives = results[2].data || [];
+        reports = results[3].data || [];
+        renderTribes();
+        renderHostels();
+        renderExecutives();
+        renderReports();
+      });
     }
 
     function renderTribes() {
-      const el = document.getElementById("panel-tribes");
-      el.innerHTML = `
-        <div class="card">
-          <h3 style="margin:0 0 8px">Add tribe</h3>
-          <label>Name</label>
-          <input id="newTribeName" placeholder="Tribe name" />
-          <label>Registration code</label>
-          <input id="newTribeCode" placeholder="Code for executives" />
-          <button class="primary" id="addTribeBtn" type="button">Add tribe</button>
-        </div>
-        ${tribes.map(t => `
-          <div class="item" data-id="${t.id}">
-            <h3>${esc(t.name)}</h3>
-            <div class="meta">Code: ${esc(t.registration_code || "—")}</div>
-            <label>Name</label>
-            <input class="t-name" value="${esc(t.name)}" />
-            <label>Registration code</label>
-            <input class="t-code" value="${esc(t.registration_code || "")}" />
-            <div class="row-btns">
-              <button class="primary save-tribe" type="button">Save</button>
-              <button class="danger del-tribe" type="button">Delete</button>
-            </div>
-          </div>
-        `).join("") || '<p class="meta">No tribes yet.</p>'}
-      `;
+      var el = document.getElementById("panel-tribes");
+      var html = '<div class="card"><h3 style="margin:0 0 8px">Add tribe</h3>' +
+        '<label>Name</label><input id="newTribeName" placeholder="Tribe name" />' +
+        '<label>Registration code</label><input id="newTribeCode" placeholder="Code for executives" />' +
+        '<button class="primary" id="addTribeBtn" type="button">Add tribe</button></div>';
+      for (var i = 0; i < tribes.length; i++) {
+        var t = tribes[i];
+        html += '<div class="item" data-id="' + t.id + '"><h3>' + esc(t.name) + '</h3>' +
+          '<div class="meta">Code: ' + esc(t.registration_code || "—") + '</div>' +
+          '<label>Name</label><input class="t-name" value="' + esc(t.name) + '" />' +
+          '<label>Registration code</label><input class="t-code" value="' + esc(t.registration_code || "") + '" />' +
+          '<div class="row-btns"><button class="primary save-tribe" type="button">Save</button>' +
+          '<button class="danger del-tribe" type="button">Delete</button></div></div>';
+      }
+      if (!tribes.length) html += '<p class="meta">No tribes yet.</p>';
+      el.innerHTML = html;
 
-      document.getElementById("addTribeBtn").onclick = async () => {
+      document.getElementById("addTribeBtn").onclick = function() {
         clearMsg();
-        const name = document.getElementById("newTribeName").value.trim();
-        const code = document.getElementById("newTribeCode").value.trim();
+        var name = document.getElementById("newTribeName").value.trim();
+        var code = document.getElementById("newTribeCode").value.trim();
         if (!name || !code) return show(msgError, "Enter tribe name and code.");
-        const { error } = await sb.from("tribes").insert({ name, registration_code: code });
-        if (error) return show(msgError, error.message);
-        show(msgOk, "Tribe added.");
-        await loadAll();
+        sb.from("tribes").insert({ name: name, registration_code: code }).then(function(res) {
+          if (res.error) return show(msgError, res.error.message);
+          show(msgOk, "Tribe added.");
+          return loadAll();
+        });
       };
-
-      el.querySelectorAll(".item").forEach(item => {
-        const id = item.getAttribute("data-id");
-        item.querySelector(".save-tribe").onclick = async () => {
-          clearMsg();
-          const name = item.querySelector(".t-name").value.trim();
-          const code = item.querySelector(".t-code").value.trim();
-          if (!name || !code) return show(msgError, "Name and code required.");
-          const { error } = await sb.from("tribes").update({ name, registration_code: code }).eq("id", id);
-          if (error) return show(msgError, error.message);
-          show(msgOk, "Tribe updated.");
-          await loadAll();
-        };
-        item.querySelector(".del-tribe").onclick = async () => {
-          if (!confirm("Delete this tribe? Hostels linked to it may also be removed.")) return;
-          clearMsg();
-          const { error } = await sb.from("tribes").delete().eq("id", id);
-          if (error) return show(msgError, error.message);
-          show(msgOk, "Tribe deleted.");
-          await loadAll();
-        };
-      });
+      var items = el.querySelectorAll(".item");
+      for (var j = 0; j < items.length; j++) {
+        (function(item) {
+          var id = item.getAttribute("data-id");
+          item.querySelector(".save-tribe").onclick = function() {
+            clearMsg();
+            var name = item.querySelector(".t-name").value.trim();
+            var code = item.querySelector(".t-code").value.trim();
+            if (!name) return show(msgError, "Name required.");
+            sb.from("tribes").update({ name: name, registration_code: code }).eq("id", id).then(function(res) {
+              if (res.error) return show(msgError, res.error.message);
+              show(msgOk, "Tribe updated.");
+              return loadAll();
+            });
+          };
+          item.querySelector(".del-tribe").onclick = function() {
+            if (!confirm("Delete this tribe?")) return;
+            clearMsg();
+            sb.from("tribes").delete().eq("id", id).then(function(res) {
+              if (res.error) return show(msgError, res.error.message);
+              show(msgOk, "Tribe deleted.");
+              return loadAll();
+            });
+          };
+        })(items[j]);
+      }
     }
 
     function renderHostels() {
-      const el = document.getElementById("panel-hostels");
-      const tribeOptions = tribes.map(t => `<option value="\( {t.id}"> \){esc(t.name)}</option>`).join("");
-      el.innerHTML = `
-        <div class="card">
-          <h3 style="margin:0 0 8px">Add hostel</h3>
-          <label>Hostel name</label>
-          <input id="newHostelName" placeholder="Hostel name" />
-          <label>Tribe</label>
-          <select id="newHostelTribe">${tribeOptions}</select>
-          <button class="primary" id="addHostelBtn" type="button">Add hostel</button>
-        </div>
-        ${hostels.map(h => `
-          <div class="item" data-id="${h.id}">
-            <h3>${esc(h.name)}</h3>
-            <div class="meta">Tribe: ${esc(tribeName(h.tribe_id))}</div>
-            <label>Name</label>
-            <input class="h-name" value="${esc(h.name)}" />
-            <label>Tribe</label>
-            <select class="h-tribe">${tribes.map(t =>
-              `<option value="${t.id}" \( {t.id===h.tribe_id?"selected":""}> \){esc(t.name)}</option>`
-            ).join("")}</select>
-            <div class="row-btns">
-              <button class="primary save-hostel" type="button">Save</button>
-              <button class="danger del-hostel" type="button">Delete</button>
-            </div>
-          </div>
-        `).join("") || '<p class="meta">No hostels yet.</p>'}
-      `;
+      var el = document.getElementById("panel-hostels");
+      var tribeOptions = "";
+      for (var i = 0; i < tribes.length; i++) {
+        tribeOptions += '<option value="' + tribes[i].id + '">' + esc(tribes[i].name) + "</option>";
+      }
+      var html = '<div class="card"><h3 style="margin:0 0 8px">Add hostel</h3>' +
+        '<label>Name</label><input id="newHostelName" placeholder="Hostel name" />' +
+        '<label>Tribe</label><select id="newHostelTribe">' + tribeOptions + '</select>' +
+        '<button class="primary" id="addHostelBtn" type="button">Add hostel</button></div>';
+      for (var h = 0; h < hostels.length; h++) {
+        var ho = hostels[h];
+        var opts = "";
+        for (var t = 0; t < tribes.length; t++) {
+          var sel = tribes[t].id === ho.tribe_id ? " selected" : "";
+          opts += '<option value="' + tribes[t].id + '"' + sel + '>' + esc(tribes[t].name) + '</option>';
+        }
+        html += '<div class="item" data-id="' + ho.id + '"><h3>' + esc(ho.name) + '</h3>' +
+          '<div class="meta">Tribe: ' + esc(tribeName(ho.tribe_id)) + '</div>' +
+          '<label>Name</label><input class="h-name" value="' + esc(ho.name) + '" />' +
+          '<label>Tribe</label><select class="h-tribe">' + opts + '</select>' +
+          '<div class="row-btns"><button class="primary save-hostel" type="button">Save</button>' +
+          '<button class="danger del-hostel" type="button">Delete</button></div></div>';
+      }
+      if (!hostels.length) html += '<p class="meta">No hostels yet.</p>';
+      el.innerHTML = html;
 
-      document.getElementById("addHostelBtn").onclick = async () => {
+      document.getElementById("addHostelBtn").onclick = function() {
         clearMsg();
-        const name = document.getElementById("newHostelName").value.trim();
-        const tribe_id = document.getElementById("newHostelTribe").value;
+        var name = document.getElementById("newHostelName").value.trim();
+        var tribe_id = document.getElementById("newHostelTribe").value;
         if (!name || !tribe_id) return show(msgError, "Enter hostel name and tribe.");
-        const { error } = await sb.from("hostels").insert({ name, tribe_id });
-        if (error) return show(msgError, error.message);
-        show(msgOk, "Hostel added.");
-        await loadAll();
-      };
-
-      el.querySelectorAll(".item").forEach(item => {
-        const id = item.getAttribute("data-id");
-        item.querySelector(".save-hostel").onclick = async () => {
-          clearMsg();
-          const name = item.querySelector(".h-name").value.trim();
-          const tribe_id = item.querySelector(".h-tribe").value;
-          if (!name) return show(msgError, "Name required.");
-          const { error } = await sb.from("hostels").update({ name, tribe_id }).eq("id", id);
-          if (error) return show(msgError, error.message);
-          show(msgOk, "Hostel updated.");
-          await loadAll();
-        };
-        item.querySelector(".del-hostel").onclick = async () => {
-          if (!confirm("Delete this hostel?")) return;
-          clearMsg();
-          const { error } = await sb.from("hostels").delete().eq("id", id);
-          if (error) return show(msgError, error.message);
-          show(msgOk, "Hostel deleted.");
-          await loadAll();
-        };
-      });
-    }
-
-    function renderExecutives() {
-      const el = document.getElementById("panel-executives");
-      el.innerHTML = executives.map(ex => `
-        <div class="item" data-id="${ex.id}">
-          <h3>${esc(ex.full_name || "—")}</h3>
-          <div class="meta">${esc(ex.email || "—")} · Tribe: ${esc(tribeName(ex.tribe_id))}</div>
-          <label>Full name</label>
-          <input class="e-name" value="${esc(ex.full_name || "")}" />
-          <label>Email (display only)</label>
-          <input value="${esc(ex.email || "")}" disabled />
-          <label>Tribe</label>
-          <select class="e-tribe">${tribes.map(t =>
-            `<option value="${t.id}" \( {t.id===ex.tribe_id?"selected":""}> \){esc(t.name)}</option>`
-          ).join("")}<option value="" ${!ex.tribe_id?"selected":""}>— none —</option></select>
-          <div class="row-btns">
-            <button class="primary save-exec" type="button">Save</button>
-            <button class="danger del-exec" type="button">Remove</button>
-          </div>
-        </div>
-      `).join("") || '<p class="meta">No executives yet.</p>';
-
-      el.querySelectorAll(".item").forEach(item => {
-        const id = item.getAttribute("data-id");
-        item.querySelector(".save-exec").onclick = async () => {
-          clearMsg();
-          const full_name = item.querySelector(".e-name").value.trim();
-          const tribe_id = item.querySelector(".e-tribe").value || null;
-          if (!full_name) return show(msgError, "Name required.");
-          const { error } = await sb.from("executive_accounts").update({ full_name, tribe_id }).eq("id", id);
-          if (error) return show(msgError, error.message);
-          show(msgOk, "Executive updated.");
-          await loadAll();
-        };
-        item.querySelector(".del-exec").onclick = async () => {
-          if (!confirm("Remove this executive profile? (Auth login user is not deleted)")) return;
-          clearMsg();
-          const { error } = await sb.from("executive_accounts").delete().eq("id", id);
-          if (error) return show(msgError, error.message);
-          show(msgOk, "Executive removed.");
-          await loadAll();
-        };
-      });
-              }
-      function renderReports() {
-      const el = document.getElementById("panel-reports");
-      el.innerHTML = reports.map(r => `
-        <div class="item" data-id="${r.id}">
-          <h3>${esc(r.title || "Untitled")}</h3>
-          <div class="meta">
-            Week ${r.week_number ?? "—"} · Attendance ${r.attendance ?? "—"} · ${esc(r.duration || "—")}
-          </div>
-          <div class="meta">${esc(r.comment || r.content || "")}</div>
-          <div class="row-btns">
-            <button class="danger del-report" type="button">Delete report</button>
-          </div>
-        </div>
-      `).join("") || '<p class="meta">No reports yet.</p>';
-
-      el.querySelectorAll(".item").forEach(item => {
-        const id = item.getAttribute("data-id");
-        item.querySelector(".del-report").onclick = async () => {
-          if (!confirm("Delete this report?")) return;
-          clearMsg();
-          const { error } = await sb.from("weekly_reports").delete().eq("id", id);
-          if (error) return show(msgError, error.message);
-          show(msgOk, "Report deleted.");
-          await loadAll();
-        };
-      });
-    }
-
-    document.querySelectorAll(".tab").forEach(btn => {
-      btn.onclick = () => {
-        document.querySelectorAll(".tab").forEach(b => b.classList.remove("active"));
-        btn.classList.add("active");
-        ["tribes","hostels","executives","reports"].forEach(name => {
-          document.getElementById("panel-" + name).classList.toggle("hidden", name !== btn.dataset.tab);
+        sb.from("hostels").insert({ name: name, tribe_id: tribe_id }).then(function(res) {
+          if (res.error) return show(msgError, res.error.message);
+          show(msgOk, "Hostel added.");
+          return loadAll();
         });
+      };
+      var items = el.querySelectorAll(".item");
+      for (var j = 0; j < items.length; j++) {
+        (function(item) {
+          var id = item.getAttribute("data-id");
+          item.querySelector(".save-hostel").onclick = function() {
+            clearMsg();
+            var name = item.querySelector(".h-name").value.trim();
+            var tribe_id = item.querySelector(".h-tribe").value;
+            if (!name) return show(msgError, "Name required.");
+            sb.from("hostels").update({ name: name, tribe_id: tribe_id }).eq("id", id).then(function(res) {
+              if (res.error) return show(msgError, res.error.message);
+              show(msgOk, "Hostel updated.");
+              return loadAll();
+            });
+          };
+          item.querySelector(".del-hostel").onclick = function() {
+            if (!confirm("Delete this hostel?")) return;
+            clearMsg();
+            sb.from("hostels").delete().eq("id", id).then(function(res) {
+              if (res.error) return show(msgError, res.error.message);
+              show(msgOk, "Hostel deleted.");
+              return loadAll();
+            });
+          };
+        })(items[j]);
+      }
+    }function renderExecutives() {
+      var el = document.getElementById("panel-executives");
+      var html = "";
+      for (var i = 0; i < executives.length; i++) {
+        var ex = executives[i];
+        var opts = '<option value="">No tribe</option>';
+        for (var t = 0; t < tribes.length; t++) {
+          var sel = tribes[t].id === ex.tribe_id ? " selected" : "";
+          opts += '<option value="' + tribes[t].id + '"' + sel + '>' + esc(tribes[t].name) + '</option>';
+        }
+        html += '<div class="item" data-id="' + ex.id + '"><h3>' + esc(ex.full_name || ex.email || "—") + '</h3>' +
+          '<div class="meta">' + esc(ex.email || "") + ' · ' + esc(tribeName(ex.tribe_id)) + '</div>' +
+          '<label>Full name</label><input class="e-name" value="' + esc(ex.full_name || "") + '" />' +
+          '<label>Tribe</label><select class="e-tribe">' + opts + '</select>' +
+          '<div class="row-btns"><button class="primary save-exec" type="button">Save</button>' +
+          '<button class="danger del-exec" type="button">Delete</button></div></div>';
+      }
+      if (!executives.length) html = '<p class="meta">No executives yet.</p>';
+      el.innerHTML = html;
+
+      var items = el.querySelectorAll(".item");
+      for (var j = 0; j < items.length; j++) {
+        (function(item) {
+          var id = item.getAttribute("data-id");
+          item.querySelector(".save-exec").onclick = function() {
+            clearMsg();
+            var full_name = item.querySelector(".e-name").value.trim();
+            var tribe_id = item.querySelector(".e-tribe").value || null;
+            sb.from("executive_accounts").update({ full_name: full_name, tribe_id: tribe_id }).eq("id", id).then(function(res) {
+              if (res.error) return show(msgError, res.error.message);
+              show(msgOk, "Executive updated.");
+              return loadAll();
+            });
+          };
+          item.querySelector(".del-exec").onclick = function() {
+            if (!confirm("Delete this executive account row?")) return;
+            clearMsg();
+            sb.from("executive_accounts").delete().eq("id", id).then(function(res) {
+              if (res.error) return show(msgError, res.error.message);
+              show(msgOk, "Executive deleted.");
+              return loadAll();
+            });
+          };
+        })(items[j]);
+      }
+    }
+
+    function renderReports() {
+      var el = document.getElementById("panel-reports");
+      var html = "";
+      for (var i = 0; i < reports.length; i++) {
+        var r = reports[i];
+        html += '<div class="item" data-id="' + r.id + '"><h3>' + esc(r.title || "Untitled") + '</h3>' +
+          '<div class="meta">Week ' + (r.week_number == null ? "—" : r.week_number) + ' · ' + esc(tribeName(r.tribe_id)) +
+          ' · Att ' + (r.attendance == null ? "—" : r.attendance) + '</div>' +
+          '<label>Title</label><input class="r-title" value="' + esc(r.title || "") + '" />' +
+          '<label>Duration</label><input class="r-duration" value="' + esc(r.duration || "") + '" />' +
+          '<label>Attendance</label><input class="r-att" type="number" value="' + (r.attendance == null ? "" : r.attendance) + '" />' +
+          '<label>Comment</label><input class="r-comment" value="' + esc(r.comment || r.content || "") + '" />' +
+          '<div class="row-btns"><button class="primary save-report" type="button">Save</button>' +
+          '<button class="danger del-report" type="button">Delete</button></div></div>';
+      }
+      if (!reports.length) html = '<p class="meta">No reports yet.</p>';
+      el.innerHTML = html;
+
+      var items = el.querySelectorAll(".item");
+      for (var j = 0; j < items.length; j++) {
+        (function(item) {
+          var id = item.getAttribute("data-id");
+          item.querySelector(".save-report").onclick = function() {
+            clearMsg();
+            var title = item.querySelector(".r-title").value.trim();
+            var duration = item.querySelector(".r-duration").value.trim();
+            var attendance = item.querySelector(".r-att").value;
+            var comment = item.querySelector(".r-comment").value.trim();
+            var payload = { title: title, duration: duration, comment: comment };
+            if (attendance !== "") payload.attendance = Number(attendance);
+            sb.from("weekly_reports").update(payload).eq("id", id).then(function(res) {
+              if (res.error) return show(msgError, res.error.message);
+              show(msgOk, "Report updated.");
+              return loadAll();
+            });
+          };
+          item.querySelector(".del-report").onclick = function() {
+            if (!confirm("Delete this report?")) return;
+            clearMsg();
+            sb.from("weekly_reports").delete().eq("id", id).then(function(res) {
+              if (res.error) return show(msgError, res.error.message);
+              show(msgOk, "Report deleted.");
+              return loadAll();
+            });
+          };
+        })(items[j]);
+      }
+    }
+
+    document.querySelectorAll(".tab").forEach(function(btn) {
+      btn.onclick = function() {
+        document.querySelectorAll(".tab").forEach(function(b) { b.classList.remove("active"); });
+        btn.classList.add("active");
+        var tab = btn.getAttribute("data-tab");
+        document.getElementById("panel-tribes").classList.toggle("hidden", tab !== "tribes");
+        document.getElementById("panel-hostels").classList.toggle("hidden", tab !== "hostels");
+        document.getElementById("panel-executives").classList.toggle("hidden", tab !== "executives");
+        document.getElementById("panel-reports").classList.toggle("hidden", tab !== "reports");
       };
     });
 
-    document.getElementById("loginBtn").onclick = async () => {
+    document.getElementById("loginBtn").onclick = function() {
       show(loginError, "");
-      const email = document.getElementById("email").value.trim();
-      const password = document.getElementById("password").value;
-      try {
-        const { data, error } = await sb.auth.signInWithPassword({ email, password });
-        if (error) throw error;
-        const ok = await requireAdmin(data.user.id);
-        if (!ok) {
-          await sb.auth.signOut();
-          throw new Error("This account is not an HPF Admin.");
-        }
+      var email = document.getElementById("email").value.trim();
+      var password = document.getElementById("password").value;
+      sb.auth.signInWithPassword({ email: email, password: password }).then(function(res) {
+        if (res.error) throw res.error;
+        return requireAdmin(res.data.user.id).then(function(ok) {
+          if (!ok) {
+            return sb.auth.signOut().then(function() {
+              throw new Error("This account is not an HPF Admin.");
+            });
+          }
+          loginView.classList.add("hidden");
+          appView.classList.remove("hidden");
+          return loadAll();
+        });
+      }).catch(function(err) {
+        show(loginError, err.message || String(err));
+      });
+    };
+
+    document.getElementById("logoutBtn").onclick = function() {
+      sb.auth.signOut().then(function() {
+        appView.classList.add("hidden");
+        loginView.classList.remove("hidden");
+      });
+    };
+
+    sb.auth.getSession().then(function(res) {
+      if (!res.data.session) return;
+      requireAdmin(res.data.session.user.id).then(function(ok) {
+        if (!ok) return;
         loginView.classList.add("hidden");
         appView.classList.remove("hidden");
-        await loadAll();
-      } catch (err) {
-        show(loginError, err.message || String(err));
-      }
-    };
-
-    document.getElementById("logoutBtn").onclick = async () => {
-      await sb.auth.signOut();
-      appView.classList.add("hidden");
-      loginView.classList.remove("hidden");
-    };
-
-    (async () => {
-      const { data } = await sb.auth.getSession();
-      if (!data.session) return;
-      const ok = await requireAdmin(data.session.user.id);
-      if (!ok) return;
-      loginView.classList.add("hidden");
-      appView.classList.remove("hidden");
-      try { await loadAll(); } catch (e) { show(msgError, e.message || String(e)); }
-    })();
+        loadAll().catch(function(e) { show(msgError, e.message || String(e)); });
+      });
+    });
   </script>
 </body>
 </html>
-    }
