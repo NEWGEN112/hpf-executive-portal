@@ -5,6 +5,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>HPF Accounts</title>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
   <style>
     :root {
       --bg:#0b0f0c; --card:#121a14; --line:#1e2a22; --text:#e8f0ea;
@@ -85,6 +87,17 @@
         <button class="ghost" id="logoutBtn" type="button">Sign out</button>
       </div>
       <div class="banner" id="roleBanner">Loading...</div>
+
+      <div class="card">
+        <label>Month (for totals + export)</label>
+        <input id="filterMonth" type="month" />
+        <p class="meta" style="margin-top:8px">Leave empty = all months. Use month for month-end PDF / Excel.</p>
+        <div class="row-btns">
+          <button class="primary" id="exportPdfBtn" type="button" style="margin-top:0">Download PDF</button>
+          <button class="primary" id="exportCsvBtn" type="button" style="margin-top:0">Download Excel (CSV)</button>
+        </div>
+      </div>
+
       <div class="grid" id="stats"></div>
 
       <div class="tabs">
@@ -189,6 +202,28 @@
       var day = String(d.getDate()).padStart(2, "0");
       return d.getFullYear() + "-" + m + "-" + day;
     }
+    function currentMonthValue() {
+      var d = new Date();
+      var m = String(d.getMonth() + 1).padStart(2, "0");
+      return d.getFullYear() + "-" + m;
+    }
+    function monthOf(dateStr) {
+      if (!dateStr) return "";
+      return String(dateStr).slice(0, 7);
+    }
+    function filterMonth() {
+      return document.getElementById("filterMonth").value || "";
+    }
+    function filteredIncome() {
+      var m = filterMonth();
+      if (!m) return incomes.slice();
+      return incomes.filter(function(r) { return monthOf(r.txn_date) === m; });
+    }
+    function filteredExpense() {
+      var m = filterMonth();
+      if (!m) return expenses.slice();
+      return expenses.filter(function(r) { return monthOf(r.txn_date) === m; });
+    }
     function resolveRole(uid) {
       return Promise.all([
         sb.from("account_officer_accounts").select("id, full_name, email").eq("id", uid).maybeSingle(),
@@ -207,24 +242,27 @@
       document.getElementById("expenseFormCard").classList.toggle("hidden", !on);
     }
     function renderStats() {
+      var incRows = filteredIncome();
+      var expRows = filteredExpense();
       var inc = 0, exp = 0;
-      for (var i = 0; i < incomes.length; i++) inc += Number(incomes[i].amount) || 0;
-      for (var j = 0; j < expenses.length; j++) exp += Number(expenses[j].amount) || 0;
+      for (var i = 0; i < incRows.length; i++) inc += Number(incRows[i].amount) || 0;
+      for (var j = 0; j < expRows.length; j++) exp += Number(expRows[j].amount) || 0;
       var bal = inc - exp;
+      var label = filterMonth() ? ("Month " + filterMonth()) : "All time";
       document.getElementById("stats").innerHTML =
-        '<div class="stat"><div class="n">' + money(inc) + '</div><div class="l">Total income</div></div>' +
-        '<div class="stat"><div class="n">' + money(exp) + '</div><div class="l">Total expenses</div></div>' +
+        '<div class="stat"><div class="n">' + money(inc) + '</div><div class="l">Income (' + label + ')</div></div>' +
+        '<div class="stat"><div class="n">' + money(exp) + '</div><div class="l">Expenses (' + label + ')</div></div>' +
         '<div class="stat"><div class="n">' + money(bal) + '</div><div class="l">Balance</div></div>' +
-        '<div class="stat"><div class="n">' + (incomes.length + expenses.length) + '</div><div class="l">All records</div></div>';
+        '<div class="stat"><div class="n">' + (incRows.length + expRows.length) + '</div><div class="l">Records shown</div></div>';
     }
     function renderIncome() {
-      if (!incomes.length) {
-        document.getElementById("incomeList").innerHTML = '<div class="meta">No income records yet.</div>';
-        return;
-      }
-      var rows = incomes.slice().sort(function(a, b) {
+      var rows = filteredIncome().sort(function(a, b) {
         return String(b.txn_date || "").localeCompare(String(a.txn_date || ""));
       });
+      if (!rows.length) {
+        document.getElementById("incomeList").innerHTML = '<div class="meta">No income records for this filter.</div>';
+        return;
+      }
       var html = "";
       for (var i = 0; i < rows.length; i++) {
         var r = rows[i];
@@ -270,13 +308,13 @@
         })(items[j]);
       }
     }function renderExpense() {
-      if (!expenses.length) {
-        document.getElementById("expenseList").innerHTML = '<div class="meta">No expense records yet.</div>';
-        return;
-      }
-      var rows = expenses.slice().sort(function(a, b) {
+      var rows = filteredExpense().sort(function(a, b) {
         return String(b.txn_date || "").localeCompare(String(a.txn_date || ""));
       });
+      if (!rows.length) {
+        document.getElementById("expenseList").innerHTML = '<div class="meta">No expense records for this filter.</div>';
+        return;
+      }
       var html = "";
       for (var i = 0; i < rows.length; i++) {
         var r = rows[i];
@@ -322,6 +360,11 @@
         })(items[j]);
       }
     }
+    function refreshView() {
+      renderStats();
+      renderIncome();
+      renderExpense();
+    }
     function loadAll() {
       show(msgError, "");
       return Promise.all([
@@ -332,9 +375,7 @@
         if (results[1].error) throw results[1].error;
         incomes = results[0].data || [];
         expenses = results[1].data || [];
-        renderStats();
-        renderIncome();
-        renderExpense();
+        refreshView();
       });
     }
     function openApp(info) {
@@ -343,12 +384,150 @@
       var label = info.role === "officer" ? "Account Officer (can edit)" : "President (view only)";
       document.getElementById("roleBanner").textContent =
         label + " · " + (info.profile.full_name || info.profile.email || "");
+      if (!document.getElementById("filterMonth").value) {
+        document.getElementById("filterMonth").value = currentMonthValue();
+      }
       if (!document.getElementById("incomeDate").value) document.getElementById("incomeDate").value = todayISO();
       if (!document.getElementById("expenseDate").value) document.getElementById("expenseDate").value = todayISO();
       loginView.classList.add("hidden");
       appView.classList.remove("hidden");
       return loadAll();
     }
+    function csvEscape(v) {
+      var s = String(v == null ? "" : v).replace(/"/g, '""');
+      return '"' + s + '"';
+    }
+    function downloadCSV() {
+      show(msgError, "");
+      var m = filterMonth() || "all";
+      var incRows = filteredIncome();
+      var expRows = filteredExpense();
+      if (!incRows.length && !expRows.length) return show(msgError, "No records to export for this month.");
+      var lines = [];
+      lines.push("HPF Accounts Export");
+      lines.push("Month," + csvEscape(m));
+      lines.push("");
+      lines.push("INCOME");
+      lines.push("Date,Type,Amount,From,Notes");
+      var incTotal = 0;
+      for (var i = 0; i < incRows.length; i++) {
+        var r = incRows[i];
+        incTotal += Number(r.amount) || 0;
+        lines.push([
+          csvEscape(r.txn_date),
+          csvEscape(r.type),
+          csvEscape(r.amount),
+          csvEscape(r.from_name),
+          csvEscape(r.notes)
+        ].join(","));
+      }
+      lines.push("Total income,," + csvEscape(incTotal.toFixed(2)));
+      lines.push("");
+      lines.push("EXPENSE");
+      lines.push("Date,Category,Amount,Paid to,Notes");
+      var expTotal = 0;
+      for (var j = 0; j < expRows.length; j++) {
+        var e = expRows[j];
+        expTotal += Number(e.amount) || 0;
+        lines.push([
+          csvEscape(e.txn_date),
+          csvEscape(e.category),
+          csvEscape(e.amount),
+          csvEscape(e.paid_to),
+          csvEscape(e.notes)
+        ].join(","));
+      }
+      lines.push("Total expenses,," + csvEscape(expTotal.toFixed(2)));
+      lines.push("");
+      lines.push("Balance,," + csvEscape((incTotal - expTotal).toFixed(2)));
+      var blob = new Blob([lines.join("\n")], { type: "text/csv;charset=utf-8;" });
+      var a = document.createElement("a");
+      a.href = URL.createObjectURL(blob);
+      a.download = "HPF-Accounts-" + m + ".csv";
+      a.click();
+      show(msgOk, "CSV downloaded.");
+    }function downloadPDF() {
+      show(msgError, "");
+      var m = filterMonth() || "all";
+      var incRows = filteredIncome().sort(function(a, b) {
+        return String(a.txn_date || "").localeCompare(String(b.txn_date || ""));
+      });
+      var expRows = filteredExpense().sort(function(a, b) {
+        return String(a.txn_date || "").localeCompare(String(b.txn_date || ""));
+      });
+      if (!incRows.length && !expRows.length) return show(msgError, "No records to export for this month.");
+      var jsPDF = window.jspdf.jsPDF;
+      var doc = new jsPDF();
+      var incTotal = 0, expTotal = 0;
+      for (var i = 0; i < incRows.length; i++) incTotal += Number(incRows[i].amount) || 0;
+      for (var j = 0; j < expRows.length; j++) expTotal += Number(expRows[j].amount) || 0;
+      var bal = incTotal - expTotal;
+
+      doc.setFontSize(16);
+      doc.text("HPF Accounts — Month-end Report", 14, 16);
+      doc.setFontSize(11);
+      doc.text("Month: " + m, 14, 24);
+      doc.text("Generated: " + new Date().toLocaleString(), 14, 30);
+      doc.text("Income: " + money(incTotal) + "   Expenses: " + money(expTotal) + "   Balance: " + money(bal), 14, 36);
+
+      var incomeBody = [];
+      for (var a = 0; a < incRows.length; a++) {
+        var r = incRows[a];
+        incomeBody.push([
+          r.txn_date || "",
+          r.type || "",
+          money(r.amount),
+          r.from_name || "",
+          r.notes || ""
+        ]);
+      }
+      if (!incomeBody.length) incomeBody.push(["—", "No income", "", "", ""]);
+
+      doc.autoTable({
+        startY: 42,
+        head: [["Date", "Type", "Amount", "From", "Notes"]],
+        body: incomeBody,
+        styles: { fontSize: 8 },
+        headStyles: { fillColor: [22, 48, 28] }
+      });
+
+      var y = doc.lastAutoTable.finalY + 10;
+      doc.setFontSize(12);
+      doc.text("Expenses", 14, y);
+      var expenseBody = [];
+      for (var b = 0; b < expRows.length; b++) {
+        var e = expRows[b];
+        expenseBody.push([
+          e.txn_date || "",
+          e.category || "",
+          money(e.amount),
+          e.paid_to || "",
+          e.notes || ""
+        ]);
+      }
+      if (!expenseBody.length) expenseBody.push(["—", "No expenses", "", "", ""]);
+
+      doc.autoTable({
+        startY: y + 4,
+        head: [["Date", "Category", "Amount", "Paid to", "Notes"]],
+        body: expenseBody,
+        styles: { fontSize: 8 },
+        headStyles: { fillColor: [22, 48, 28] }
+      });
+
+      var y2 = doc.lastAutoTable.finalY + 10;
+      doc.setFontSize(11);
+      doc.text("Total income: " + money(incTotal), 14, y2);
+      doc.text("Total expenses: " + money(expTotal), 14, y2 + 6);
+      doc.text("Balance: " + money(bal), 14, y2 + 12);
+
+      doc.save("HPF-Accounts-" + m + ".pdf");
+      show(msgOk, "PDF downloaded.");
+    }
+
+    document.getElementById("filterMonth").onchange = refreshView;
+    document.getElementById("exportPdfBtn").onclick = downloadPDF;
+    document.getElementById("exportCsvBtn").onclick = downloadCSV;
 
     document.querySelectorAll(".tab").forEach(function(btn) {
       btn.onclick = function() {
