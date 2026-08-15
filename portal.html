@@ -26,7 +26,7 @@
     .sub{text-align:center;color:var(--muted);margin:0 0 16px;font-size:14px}
     .card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px;margin-bottom:12px}
     label{display:block;font-size:13px;color:var(--muted);margin:10px 0 6px}
-    input,select{
+    input{
       width:100%;background:var(--input);border:1px solid var(--line);border-radius:10px;
       padding:11px 12px;color:var(--text);font-size:15px;outline:none
     }
@@ -45,9 +45,7 @@
       display:block;text-decoration:none;color:#111;background:var(--accent);
       font-weight:700;padding:16px;border-radius:12px;text-align:center
     }
-    .tool.secondary{
-      background:#1a2a1e;color:var(--accent);border:1px solid #2f4a36
-    }
+    .tool.secondary{background:#1a2a1e;color:var(--accent);border:1px solid #2f4a36}
     .tool .t{font-size:15px}
     .tool .d{font-size:12px;font-weight:500;opacity:.85;margin-top:4px}
     .section-title{margin:4px 0 10px;font-size:16px;font-weight:700}
@@ -69,7 +67,7 @@
         <button class="primary" id="loginBtn" type="button">Sign in</button>
         <div class="error" id="loginError"></div>
       </div>
-      <p class="sub">Works for Executive · Admin · President · Account Officer</p>
+      <p class="sub">Executive · Admin · Account Officer · President (secret code)</p>
     </div>
 
     <div id="homeView" class="hidden">
@@ -83,11 +81,13 @@
       <div id="toolsBox"></div>
       <div class="error" id="homeError"></div>
     </div>
-    </div>
+  </div>
   <script>
     var SUPABASE_URL = "https://pexepaclinlqcwjuzhen.supabase.co";
     var SUPABASE_KEY = "sb_publishable_U7WdBF49bn0x0cJ8t3s2WQ_5w4mnty5";
+    var PRESIDENT_SECRET = "HPF-P7";
     var sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+    var currentRoles = [];
 
     var loginView = document.getElementById("loginView");
     var homeView = document.getElementById("homeView");
@@ -109,6 +109,9 @@
         (desc ? '<div class="d">' + esc(desc) + "</div>" : "") +
         "</a>";
     }
+    function presidentUnlocked() {
+      return sessionStorage.getItem("hpf_president_ok") === "1";
+    }
     function resolveRoles(uid) {
       return Promise.all([
         sb.from("executive_accounts").select("id, full_name, tribe_id").eq("id", uid).maybeSingle(),
@@ -126,10 +129,11 @@
       });
     }
     function primaryRole(roles) {
-      var order = ["president", "admin", "officer", "executive"];
+      var order = ["officer", "admin", "executive"];
       for (var i = 0; i < order.length; i++) {
         for (var j = 0; j < roles.length; j++) if (roles[j].key === order[i]) return roles[j];
       }
+      for (var k = 0; k < roles.length; k++) if (roles[k].key === "president") return roles[k];
       return null;
     }
     function roleLabel(key) {
@@ -139,13 +143,29 @@
       if (key === "executive") return "Executive";
       return key;
     }
+    function bindPresidentGate() {
+      var btn = document.getElementById("portalGateBtn");
+      if (!btn) return;
+      btn.onclick = function() {
+        var code = (document.getElementById("portalSecret").value || "").trim();
+        var err = document.getElementById("portalGateError");
+        if (code !== PRESIDENT_SECRET) {
+          if (err) { err.textContent = "Wrong secret code."; err.classList.add("show"); }
+          return;
+        }
+        sessionStorage.setItem("hpf_president_ok", "1");
+        renderHome(currentRoles);
+        bindPresidentGate();
+      };
+    }
     function renderHome(roles) {
+      currentRoles = roles;
       var main = primaryRole(roles);
       if (!main) {
         show(homeError, "No HPF role found for this account.");
         return;
       }
-      var name = main.profile.full_name || main.profile.email || "User";
+      var name = main.profile.full_name || "User";
       var allLabels = roles.map(function(r) { return roleLabel(r.key); }).join(" · ");
       document.getElementById("homeTitle").textContent = roleLabel(main.key) + " Home";
       document.getElementById("welcomeBanner").textContent =
@@ -155,23 +175,9 @@
       var keys = {};
       for (var i = 0; i < roles.length; i++) keys[roles[i].key] = true;
 
-      if (keys.president) {
-        html += '<div class="card"><div class="section-title">President</div>';
-        html += '<p class="role-note">Full overview and every admin tool</p><div class="grid">';
-        html += tool("./president.html", "President Hub", "Stats, missing reports, executives table");
-        html += tool("./admin-dashboard.html", "Summary Dashboard", "Numbers at a glance");
-        html += tool("./admin-reports.html", "Full Reports", "All executive weekly reports");
-        html += tool("./admin-export.html", "Export PDF / Excel", "Month-end downloads");
-        html += tool("./admin-manage.html", "Manage Tribes & Hostels", "People and structure");
-        html += tool("./admin-schedule.html", "Hostel Prayer Timetable", "Days, times, coordinators");
-        html += tool("./admin-semesters.html", "Semesters", "Close semester & start new");
-        html += tool("./accounts.html", "Accounts (view)", "Income & expense overview", true);
-        html += "</div></div>";
-      }
-
-      if (keys.admin && !keys.president) {
+      if (keys.admin) {
         html += '<div class="card"><div class="section-title">Admin</div>';
-        html += '<p class="role-note">Manage HPF operations</p><div class="grid">';
+        html += '<p class="role-note">Manage HPF operations (no President access without secret code)</p><div class="grid">';
         html += tool("./admin-dashboard.html", "Summary Dashboard", "Numbers at a glance");
         html += tool("./admin-manage.html", "Manage Tribes & Hostels", "People and structure");
         html += tool("./admin-reports.html", "Full Reports", "All executive weekly reports");
@@ -197,8 +203,32 @@
         html += "</div></div>";
       }
 
+      if (keys.president) {
+        html += '<div class="card"><div class="section-title">President</div>';
+        if (!presidentUnlocked()) {
+          html += '<p class="role-note">Protected — secret code required (Admin cannot enter without it)</p>';
+          html += '<label>Secret code</label>';
+          html += '<input id="portalSecret" type="password" placeholder="Secret code" />';
+          html += '<button class="primary" id="portalGateBtn" type="button">Unlock President Hub</button>';
+          html += '<div class="error" id="portalGateError"></div>';
+        } else {
+          html += '<p class="role-note">Unlocked for this browser session</p><div class="grid">';
+          html += tool("./president.html", "President Hub", "Stats, missing reports, executives table");
+          html += tool("./admin-dashboard.html", "Summary Dashboard", "Numbers at a glance");
+          html += tool("./admin-reports.html", "Full Reports", "All executive weekly reports");
+          html += tool("./admin-export.html", "Export PDF / Excel", "Month-end downloads");
+          html += tool("./admin-manage.html", "Manage Tribes & Hostels", "People and structure");
+          html += tool("./admin-schedule.html", "Hostel Prayer Timetable", "Days, times, coordinators");
+          html += tool("./admin-semesters.html", "Semesters", "Close semester & start new");
+          html += tool("./accounts.html", "Accounts (view)", "Income & expense overview", true);
+          html += "</div>";
+        }
+        html += "</div>";
+      }
+
       if (!html) html = '<div class="card"><div class="role-note">No tools for this role yet.</div></div>';
       document.getElementById("toolsBox").innerHTML = html;
+      bindPresidentGate();
     }
     function openHome(roles) {
       show(homeError, "");
@@ -244,4 +274,4 @@
     });
   </script>
 </body>
-  </html>
+</html>
