@@ -17,9 +17,15 @@
       background:radial-gradient(1200px 600px at 50% -10%,#16301c 0%,var(--bg) 55%);
     }
     .wrap{max-width:920px;margin:0 auto;padding:20px 12px 40px}
-    .logo{
-      width:44px;height:44px;border-radius:12px;background:var(--accent);color:#111;
-      display:grid;place-items:center;font-weight:800;font-size:20px;margin:0 auto 8px
+    .logo {
+      width: 56px;
+      height: 56px;
+      border-radius: 14px;
+      object-fit: cover;
+      display: block;
+      margin: 0 auto 12px;
+      border: 2px solid var(--accent);
+      background: #0e1511;
     }
     .pill{text-align:center;color:var(--accent);font-size:12px;letter-spacing:.12em;font-weight:700;margin:0 0 6px}
     h1{text-align:center;margin:0 0 6px;font-size:24px}
@@ -54,7 +60,7 @@
 <body>
   <div class="wrap">
     <div id="loginView">
-      <div class="logo">✦</div>
+      <img class="logo" src="./hpf-logo.jpg" alt="HPF Logo" />
       <p class="pill">HPF EXECUTIVE</p>
       <h1>My Schedule</h1>
       <p class="sub">Update hostel fellowship days and times for your tribe</p>
@@ -70,7 +76,7 @@
     </div>
 
     <div id="appView" class="hidden">
-      <div class="logo">✦</div>
+      <img class="logo" src="./hpf-logo.jpg" alt="HPF Logo" />
       <p class="pill">HPF EXECUTIVE</p>
       <div class="top">
         <h1>My Week Schedule</h1>
