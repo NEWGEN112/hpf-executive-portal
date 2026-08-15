@@ -1,1 +1,306 @@
 
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>HPF Semesters</title>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <style>
+    :root {
+      --bg:#0b0f0c; --card:#121a14; --line:#1e2a22; --text:#e8f0ea;
+      --muted:#8fa396; --accent:#c8f54a; --input:#0e1511;
+    }
+    *{box-sizing:border-box}
+    body{
+      margin:0;min-height:100vh;color:var(--text);
+      font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;
+      background:radial-gradient(1200px 600px at 50% -10%,#16301c 0%,var(--bg) 55%);
+    }
+    .wrap{max-width:900px;margin:0 auto;padding:20px 12px 40px}
+    .logo{
+      width:56px;height:56px;border-radius:14px;object-fit:cover;display:block;
+      margin:0 auto 12px;border:2px solid var(--accent);background:#0e1511;
+    }
+    .pill{text-align:center;color:var(--accent);font-size:12px;letter-spacing:.12em;font-weight:700;margin:0 0 6px}
+    h1{text-align:center;margin:0 0 6px;font-size:24px}
+    .sub{text-align:center;color:var(--muted);margin:0 0 16px;font-size:14px}
+    .card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px;margin-bottom:12px}
+    label{display:block;font-size:13px;color:var(--muted);margin:10px 0 6px}
+    input{
+      width:100%;background:var(--input);border:1px solid var(--line);border-radius:10px;
+      padding:11px 12px;color:var(--text);font-size:15px;outline:none
+    }
+    button{border:0;border-radius:10px;padding:11px 14px;font-size:14px;font-weight:700;cursor:pointer}
+    .primary{background:var(--accent);color:#111;width:100%;margin-top:10px}
+    .ghost{background:transparent;color:var(--muted)}
+    .danger{background:#3a1515;color:#ffb4b4;border:1px solid #5c2424;width:100%;margin-top:8px}
+    .secondary{background:#1a2a1e;color:var(--accent);border:1px solid #2f4a36;width:100%;margin-top:8px}
+    .error,.ok{display:none;margin-top:10px;border-radius:10px;padding:10px;font-size:14px}
+    .error{background:#3a1515;color:#ffb4b4;border:1px solid #5c2424}
+    .ok{background:#14301a;color:#b7f5c2;border:1px solid #2a5a36}
+    .error.show,.ok.show{display:block}
+    .hidden{display:none!important}
+    .top{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:12px;flex-wrap:wrap}
+    .top h1{margin:0;font-size:22px;text-align:left}
+    .item{border:1px solid var(--line);border-radius:12px;padding:12px;margin-bottom:8px;background:#0e1511}
+    .item b{color:var(--accent)}
+    .meta{color:var(--muted);font-size:12px;margin-top:4px}
+    .badge{display:inline-block;padding:3px 8px;border-radius:999px;font-size:11px;font-weight:700;margin-left:6px}
+    .badge.on{background:#1a3a22;color:var(--accent)}
+    .badge.off{background:#2a2a2a;color:var(--muted)}
+    .links a{display:block;text-align:center;color:var(--accent);margin-top:10px;font-size:14px}
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div id="loginView">
+      <img class="logo" src="./hpf-logo.jpg" alt="HPF Logo" />
+      <p class="pill">HPF ADMIN</p>
+      <h1>Semesters</h1>
+      <p class="sub">Close a semester and start a fresh one</p>
+      <div class="card">
+        <label>Email</label>
+        <input id="email" type="email" />
+        <label>Password</label>
+        <input id="password" type="password" />
+        <button class="primary" id="loginBtn" type="button">Sign in</button>
+        <div class="error" id="loginError"></div>
+      </div>
+    </div>
+
+    <div id="appView" class="hidden">
+      <img class="logo" src="./hpf-logo.jpg" alt="HPF Logo" />
+      <p class="pill">HPF ADMIN</p>
+      <div class="top">
+        <h1>Semesters</h1>
+        <button class="ghost" id="logoutBtn" type="button">Sign out</button>
+      </div>
+      <p class="sub" id="welcome" style="text-align:left">Welcome</p>
+
+      <div class="card">
+        <div style="font-weight:700;margin-bottom:6px">Active semester</div>
+        <div id="activeBox" class="meta">Loading...</div>
+        <button class="danger" id="closeStartBtn" type="button">Close current & start new semester</button>
+        <p class="meta" style="margin-top:8px">This locks the current semester. New executive reports go into the new one. Old records stay for history.</p>
+      </div>
+
+      <div class="card">
+        <div style="font-weight:700;margin-bottom:6px">Create semester (optional)</div>
+        <label>Name</label>
+        <input id="newName" type="text" placeholder="e.g. 2026 First Semester" />
+        <button class="primary" id="createBtn" type="button">Create & make active</button>
+      </div>
+
+      <div class="card">
+        <div style="font-weight:700;margin-bottom:8px">All semesters</div>
+        <div id="listBox" class="meta">Loading...</div>
+      </div>
+
+      <div class="error" id="msgError"></div>
+      <div class="ok" id="msgOk"></div>
+
+      <div class="links">
+        <a href="./admin-reports.html">View reports</a>
+        <a href="./admin-dashboard.html">Dashboard</a>
+        <a href="./admin-export.html">Export</a>
+        <a href="./president.html">President Hub</a>
+      </div>
+    </div>
+  </div>
+  <script>
+    var SUPABASE_URL = "https://pexepaclinlqcwjuzhen.supabase.co";
+    var SUPABASE_KEY = "sb_publishable_U7WdBF49bn0x0cJ8t3s2WQ_5w4mnty5";
+    var sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+    var loginView = document.getElementById("loginView");
+    var appView = document.getElementById("appView");
+    var loginError = document.getElementById("loginError");
+    var msgError = document.getElementById("msgError");
+    var msgOk = document.getElementById("msgOk");
+    var semesters = [];
+
+    function show(el, msg) {
+      el.textContent = msg || "";
+      if (msg) el.classList.add("show"); else el.classList.remove("show");
+    }
+    function esc(s) {
+      return String(s == null ? "" : s)
+        .replace(/&/g, "&amp;").replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+    }
+    function requireAdmin(uid) {
+      return Promise.all([
+        sb.from("admin_accounts").select("id, full_name, email").eq("id", uid).maybeSingle(),
+        sb.from("president_accounts").select("id, full_name, email").eq("id", uid).maybeSingle()
+      ]).then(function(res) {
+        if (res[0].error) throw res[0].error;
+        if (res[1].error) throw res[1].error;
+        if (res[0].data) return { role: "admin", profile: res[0].data };
+        if (res[1].data) return { role: "president", profile: res[1].data };
+        return null;
+      });
+    }
+    function activeSemester() {
+      for (var i = 0; i < semesters.length; i++) if (semesters[i].is_active) return semesters[i];
+      return null;
+    }
+    function render() {
+      var a = activeSemester();
+      if (!a) {
+        document.getElementById("activeBox").innerHTML = '<div class="meta">No active semester. Create one below.</div>';
+      } else {
+        document.getElementById("activeBox").innerHTML =
+          "<b>" + esc(a.name) + '</b><span class="badge on">ACTIVE</span>' +
+          '<div class="meta">ID ready for new reports · created ' +
+          (a.created_at ? new Date(a.created_at).toLocaleString() : "—") + "</div>";
+      }
+      if (!semesters.length) {
+        document.getElementById("listBox").innerHTML = '<div class="meta">No semesters yet.</div>';
+        return;
+      }
+      var sorted = semesters.slice().sort(function(x, y) {
+        return String(y.created_at || "").localeCompare(String(x.created_at || ""));
+      });
+      var html = "";
+      for (var i = 0; i < sorted.length; i++) {
+        var s = sorted[i];
+        html += '<div class="item" data-id="' + s.id + '">';
+        html += "<b>" + esc(s.name) + "</b>";
+        html += s.is_active
+          ? '<span class="badge on">ACTIVE</span>'
+          : '<span class="badge off">CLOSED</span>';
+        html += '<div class="meta">' +
+          (s.starts_on ? "Starts " + esc(s.starts_on) : "No start date") +
+          (s.ends_on ? " · Ends " + esc(s.ends_on) : "") +
+          "</div>";
+        if (!s.is_active) {
+          html += '<button class="secondary make-active" type="button">Make active</button>';
+        }
+        html += "</div>";
+      }
+      document.getElementById("listBox").innerHTML = html;
+      var items = document.querySelectorAll("#listBox .item");
+      for (var j = 0; j < items.length; j++) {
+        (function(item) {
+          var id = item.getAttribute("data-id");
+          var btn = item.querySelector(".make-active");
+          if (!btn) return;
+          btn.onclick = function() {
+            if (!confirm("Make this semester active? The current active one will be closed.")) return;
+            show(msgError, ""); show(msgOk, "");
+            sb.from("semesters").update({ is_active: false, ends_on: new Date().toISOString().slice(0, 10) })
+              .eq("is_active", true)
+              .then(function(r1) {
+                if (r1.error) throw r1.error;
+                return sb.from("semesters").update({ is_active: true, ends_on: null }).eq("id", id);
+              })
+              .then(function(r2) {
+                if (r2.error) throw r2.error;
+                show(msgOk, "Active semester updated.");
+                return loadAll();
+              })
+              .catch(function(e) { show(msgError, e.message || String(e)); });
+          };
+        })(items[j]);
+      }
+    }
+    function loadAll() {
+      show(msgError, "");
+      return sb.from("semesters").select("*").order("created_at", { ascending: false })
+        .then(function(res) {
+          if (res.error) throw res.error;
+          semesters = res.data || [];
+          render();
+        });
+    }
+    function openApp(info) {
+      document.getElementById("welcome").textContent =
+        "Signed in as " + (info.profile.full_name || info.profile.email || info.role);
+      loginView.classList.add("hidden");
+      appView.classList.remove("hidden");
+      return loadAll();
+    }document.getElementById("createBtn").onclick = function() {
+      show(msgError, ""); show(msgOk, "");
+      var name = document.getElementById("newName").value.trim();
+      if (!name) return show(msgError, "Enter a semester name.");
+      if (!confirm("Create \"" + name + "\" and make it the active semester?")) return;
+      sb.from("semesters").update({ is_active: false, ends_on: new Date().toISOString().slice(0, 10) })
+        .eq("is_active", true)
+        .then(function(r1) {
+          if (r1.error) throw r1.error;
+          return sb.from("semesters").insert({
+            name: name,
+            is_active: true,
+            starts_on: new Date().toISOString().slice(0, 10)
+          });
+        })
+        .then(function(r2) {
+          if (r2.error) throw r2.error;
+          document.getElementById("newName").value = "";
+          show(msgOk, "New semester created and set active.");
+          return loadAll();
+        })
+        .catch(function(e) { show(msgError, e.message || String(e)); });
+    };
+
+    document.getElementById("closeStartBtn").onclick = function() {
+      show(msgError, ""); show(msgOk, "");
+      var a = activeSemester();
+      var nextName = "Semester " + new Date().toISOString().slice(0, 10);
+      if (!confirm("Close current semester" + (a ? " (\"" + a.name + "\")" : "") +
+          " and start a new one named \"" + nextName + "\"?\n\nOld reports stay in the closed semester. New reports go to the new one.")) return;
+      sb.from("semesters").update({ is_active: false, ends_on: new Date().toISOString().slice(0, 10) })
+        .eq("is_active", true)
+        .then(function(r1) {
+          if (r1.error) throw r1.error;
+          return sb.from("semesters").insert({
+            name: nextName,
+            is_active: true,
+            starts_on: new Date().toISOString().slice(0, 10)
+          });
+        })
+        .then(function(r2) {
+          if (r2.error) throw r2.error;
+          show(msgOk, "Previous semester closed. New semester is active.");
+          return loadAll();
+        })
+        .catch(function(e) { show(msgError, e.message || String(e)); });
+    };
+
+    document.getElementById("loginBtn").onclick = function() {
+      show(loginError, "");
+      var email = document.getElementById("email").value.trim();
+      var password = document.getElementById("password").value;
+      sb.auth.signInWithPassword({ email: email, password: password }).then(function(res) {
+        if (res.error) throw res.error;
+        return requireAdmin(res.data.user.id).then(function(info) {
+          if (!info) {
+            return sb.auth.signOut().then(function() {
+              throw new Error("This account is not HPF Admin or President.");
+            });
+          }
+          return openApp(info);
+        });
+      }).catch(function(err) {
+        show(loginError, err.message || String(err));
+      });
+    };
+
+    document.getElementById("logoutBtn").onclick = function() {
+      sb.auth.signOut().then(function() {
+        appView.classList.add("hidden");
+        loginView.classList.remove("hidden");
+      });
+    };
+
+    sb.auth.getSession().then(function(res) {
+      if (!res.data.session) return;
+      requireAdmin(res.data.session.user.id).then(function(info) {
+        if (!info) return;
+        openApp(info).catch(function(e) { show(msgError, e.message || String(e)); });
+      });
+    });
+  </script>
+</body>
+</html>
